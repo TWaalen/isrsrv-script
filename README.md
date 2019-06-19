@@ -1,7 +1,7 @@
 # isrsrv-script
 Bash script for running Interstellar Rift on a linux server
 
-Features:
+**Features:**
 
 -auto backups
 
@@ -22,6 +22,8 @@ Features:
 -start on os boot
 
 -shutdown gracefully on os shutdown
+
+**Instructions:**
 
 Before doing anything edit the script and input your steam username and password for the auto update feature to work.
 The variables for it are located at the very top of the script.
@@ -46,3 +48,8 @@ systemctl --user enable isrsrv-tmpfs.service for the RamDisk variant (USE ONLY O
 Now start the service with systemctl --user start isrsrv.service or systemctl --user start isrsrv-tmpfs.service
 
 That should be it.
+
+**Known issues are:**
+-If typing uppercase letters and symbols in the server console the server crashes. To avoid crashes use lowercase letters and use ID codes for user specific commands.
+
+-if for some reason systemd reports the service failed when it stops, don't worry about it, the IsR server session shuts down gracefully.
