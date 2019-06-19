@@ -324,6 +324,7 @@ script_timer_one() {
 #Second timer function for systemd timers to execute parts of the script in order without interfering with each other
 script_timer_two() {
 	script_enabled
+	script_logs
 	script_crash_kill
 	script_autorestart
 	script_save
