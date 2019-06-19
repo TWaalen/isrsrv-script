@@ -28,7 +28,7 @@ WINE_PREFIX_GAME_DIR="drive_c/Games/InterstellarRift" #Server executable directo
 WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline" #Server executable
 
 #Ramdisk configuration
-TMPFS_ENABLE="1" #Set this to 1 if you want to run the server on a ramdisk
+TMPFS_ENABLE="0" #Set this to 1 if you want to run the server on a ramdisk
 TMPFS_DIR="/home/$USER/tmpfs/$SRV_DIR_NAME" #Locaton of your ramdisk. Note: you have to configure the ramdisk in /etc/fstab before using this.
 
 #TmpFs/hdd variables
