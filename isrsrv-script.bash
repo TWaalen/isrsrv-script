@@ -113,10 +113,10 @@ script_save() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Server is not running." | tee -a  "$LOG_SCRIPT"
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk has been initiated." | tee -a  "$LOG_SCRIPT"
-		(sleep 5 && screen -p 0 -S $NAME -X eval 'stuff "save"\\015') &
+		( sleep 5 && screen -p 0 -S $NAME -X eval 'stuff "save"\\015' ) &
 		while read line; do
 			if [[ "$line" =~ "[Server]: Save completed." ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk has been completed." #| tee -a  "$LOG_SCRIPT"
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk has been completed." | tee -a  "$LOG_SCRIPT"
 				break
 			else
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk is in progress. Please wait..."
