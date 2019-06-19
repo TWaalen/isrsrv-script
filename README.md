@@ -27,22 +27,23 @@ Bash script for running Interstellar Rift on a linux server
 
 Log in to your server with ssh and execute:
 
-[code]
 wget https://raw.githubusercontent.com/7thCore/isrsrv-script/master/isrsrv-script.bash
-[/code]
 
 Before doing anything edit the script and input your steam username and password for the auto update feature to work. The variables for it are located at the very top of the script. Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the two factor authentication code and breaks the auto update feature. Use Steam Guard via email.
 
 Also if you plan to use a ramdisk change the variable:
-[code]TMPFS_ENABLE="0"[/code]
+
+TMPFS_ENABLE="0"
+
 to
-[code]TMPFS_ENABLE="1"[/code]
+
+TMPFS_ENABLE="1"
 
 Run steamcmd and login with your account at least once to enter the first two factor authentication code and after that steamcmd will not ask you for another code once it runs.
 
-[code]
+
 steamcmd login username password
-[/code]
+
 
 Now for the installation.
 
@@ -56,15 +57,22 @@ Also when the uninstaller shows up remove everything related to mono.
 Lastly you can run the script with the -update argument to install the game. Your server configuration file and SSK should be put in /path/to/prefix/drive_c/users/your_username/Application Data/InterstellarRift/ When all of this is done copy/move this script to the script folder.
 
 After that enable the correct service with:
+
 systemctl --user enable isrsrv.service
+
 or for the RamDisk variant
-[code]systemctl --user enable isrsrv-tmpfs.service[/code]
+
+systemctl --user enable isrsrv-tmpfs.service
+
 USE ONLY ONE!
 
 Now start the service with:
-[code]systemctl --user start isrsrv.service[/code]
+
+systemctl --user start isrsrv.service
+
 or again for the RamDisk variant
-[code]systemctl --user start isrsrv-tmpfs.service[/code]
+
+systemctl --user start isrsrv-tmpfs.service
 
 That should be it.
 
