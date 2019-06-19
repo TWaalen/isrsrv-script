@@ -342,7 +342,7 @@ script_install() {
 	echo ""
 	echo "Required packages that need to be installed on the client:"
 	echo "xorg-xauth"
-	echo ""| sed '/^$/d'
+	echo ""
 	echo "If these packages aren't installed, terminate this script with CTRL+C and install them."
 	echo ""
 	echo "This installation will enable linger for the user specified (allows user services to be ran on boot)."
