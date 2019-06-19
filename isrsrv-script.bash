@@ -291,6 +291,7 @@ script_update() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Updating..." | tee -a  "$LOG_SCRIPT"
 		steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID validate +quit
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Update completed." | tee -a  "$LOG_SCRIPT"
+		echo "$AVAILABLE_BUILDID" > $UPDATE_DIR/installed.buildid
 		echo "$AVAILABLE_TIME" > $UPDATE_DIR/installed.timeupdated
 		if [ "$WAS_RUNNING" == "1" ]; then
 			if [[ "$TMPFS_ENABLE" == "1" ]]; then
