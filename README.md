@@ -19,6 +19,10 @@ Features:
 
 -sync from ramdisk to hdd/ssd
 
+-start on os boot
+
+-shutdown gracefully on os shutdown
+
 Before doing anything edit the script and input your steam username and password for the auto update feature to work.
 The variables for it are located at the very top of the script.
 Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the
