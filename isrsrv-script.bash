@@ -121,7 +121,7 @@ script_save() {
 			else
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk is in progress. Please wait..."
 			fi
-		done < <(tail -n1 -f $LOG_SCREEN)
+		done < <(tail -n1 -f $LOG_TMP)
 	fi
 }
 
