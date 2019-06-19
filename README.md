@@ -2,13 +2,21 @@
 Bash script for running Interstellar Rift on a linux server
 
 Features:
+
 -auto backups
+
 -auto updates
+
 -script logging
+
 -auto restart if crashed
+
 -delete old backups
+
 -delete old logs
+
 -run from ramdisk
+
 -sync from ramdisk to hdd/ssd
 
 Before doing anything edit the script and input your steam username and password for the auto update feature to work.
