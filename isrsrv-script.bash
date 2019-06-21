@@ -426,7 +426,7 @@ script_install_services() {
 	ExecStart=/bin/bash -c 'screen -c $SCRIPT_DIR/$SERVICE_NAME-screen.conf -d -m -S $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR wineconsole --backend=curses $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE'
 	ExecStartPost=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
-	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 Server shutting down in 15 seconds!"\\015'
+	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 server shutting down in 15 seconds"\\015'
 	ExecStop=/bin/sleep 20
 	ExecStop=/usr/bin/rsync -av --info=progress2 $TMPFS_DIR/ $SRV_DIR
 	TimeoutStartSec=infinity
@@ -448,7 +448,7 @@ script_install_services() {
 	ExecStart=/bin/bash -c 'screen -c $SCRIPT_DIR/$SERVICE_NAME-screen.conf -d -m -S $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineconsole --backend=curses $SRV_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE'
 	ExecStartPost=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
-	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 Server shutting down in 15 seconds!"\\015'
+	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 server shutting down in 15 seconds"\\015'
 	ExecStop=/bin/sleep 20
 	TimeoutStartSec=infinity
 	TimeoutStopSec=300
@@ -630,7 +630,7 @@ script_install_services() {
 	bind } history
 	
 	scrollback 1000
-	logfile $LOG_SCREEN
+	logfile $LOG_TMP
 	logfile flush 0
 	deflog on
 	EOF
