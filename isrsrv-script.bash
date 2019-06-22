@@ -280,7 +280,7 @@ script_update() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Available: BuildID: $AVAILABLE_BUILDID, TimeUpdated: $AVAILABLE_TIME" | tee -a  "$LOG_SCRIPT"
 		sleep 1
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-			screen -p 0 -S $NAME -X eval 'stuff "/all New update detected. Server will shutdown and update."\\015'
+			#screen -p 0 -S $NAME -X eval 'stuff "/all New update detected. Server will shutdown and update."\\015'
 			WAS_RUNNING="1"
 			script_stop
 		fi
@@ -424,7 +424,7 @@ script_install_services() {
 	WorkingDirectory=$TMPFS_DIR/$WINE_PREFIX_GAME_DIR/Build/
 	ExecStartPre=/usr/bin/rsync -av --info=progress2 $SRV_DIR/ $TMPFS_DIR
 	ExecStart=/bin/bash -c 'screen -c $SCRIPT_DIR/$SERVICE_NAME-screen.conf -d -m -S $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR wineconsole --backend=curses $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE'
-	ExecStartPost=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
+	ExecStartPost=/usr/bin/sed -i 's/SCRIPT_ENABLED="0"/SCRIPT_ENABLED="1"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 server shutting down in 15 seconds"\\015'
 	ExecStop=/bin/sleep 20
@@ -446,7 +446,7 @@ script_install_services() {
 	Type=forking
 	WorkingDirectory=$SRV_DIR/$WINE_PREFIX_GAME_DIR/Build/
 	ExecStart=/bin/bash -c 'screen -c $SCRIPT_DIR/$SERVICE_NAME-screen.conf -d -m -S $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineconsole --backend=curses $SRV_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE'
-	ExecStartPost=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
+	ExecStartPost=/usr/bin/sed -i 's/SCRIPT_ENABLED="0"/SCRIPT_ENABLED="1"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 server shutting down in 15 seconds"\\015'
 	ExecStop=/bin/sleep 20
