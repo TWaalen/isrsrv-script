@@ -6,7 +6,7 @@
 SCRIPT_ENABLED="0"
 
 #Basics
-NAME="IsRSrv" #Name of the screen
+export NAME="IsRSrv" #Name of the screen
 USER="$(whoami)" #Get user's username
 
 #Steamcmd login
@@ -47,9 +47,9 @@ BCKP_DEST="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are
 BCKP_DELOLD="+3" #Delete old backups. Ex +3 deletes 3 days old backups.
 
 #Log configuration
-LOG_DIR="/home/$USER/servers/$SRV_DIR_NAME/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
-LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log
-LOG_TMP="/tmp/$SERVICE_NAME-screen.log"
+export LOG_DIR="/home/$USER/servers/$SRV_DIR_NAME/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
+export LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log
+export LOG_TMP="/tmp/$SERVICE_NAME-screen.log"
 LOG_DELOLD="+14" #Delete old logs. Ex +14 deletes 14 days old logs.
 
 #-------Do not edit anything beyond this line-------
@@ -123,6 +123,9 @@ script_save() {
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk is in progress. Please wait..."
 			fi
 		done < <(tail -n1 -f $LOG_TMP)'
+                if [ $? -eq 124 ]; then                                   
+                        echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save time limit exceeded."
+                fi
 	fi
 }
 
