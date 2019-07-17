@@ -7,11 +7,11 @@ Bash script for running Interstellar Rift on a linux server
 
 -screen
 
--steamcmd
-
 -wine
 
 -winetricks
+
+-steamcmd
 
 **Features:**
 
