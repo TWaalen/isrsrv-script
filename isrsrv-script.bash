@@ -7,7 +7,11 @@ SCRIPT_ENABLED="0"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
-USER="$(whoami)" #Get user's username
+if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the username for the installation process, otherwise use the executing user
+	USER="$(whoami)"
+else
+	read -p "Please enter username (default interstellar_rift):" USER
+fi
 
 #Steamcmd login
 STEAMCMDUID="user" #Your steam username
@@ -17,10 +21,10 @@ APPID="363360" #app id of the steam game
 #Server configuration
 SERVICE_NAME="isrsrv" #Name of the service files, script and script log
 SRV_DIR_NAME="interstellar_rift" #Main directory name
-SRV_DIR="/home/$USER/servers/$SRV_DIR_NAME/server" #Location of the server located on your hdd/ssd
+SRV_DIR="/home/$USER/server" #Location of the server located on your hdd/ssd
 SCRIPT_NAME="$SERVICE_NAME-script.bash" #Script name
-SCRIPT_DIR="/home/$USER/servers/$SRV_DIR_NAME/scripts" #Location of this script
-UPDATE_DIR="/home/$USER/servers/$SRV_DIR_NAME/updates" #Location of update information for the script's automatic update feature
+SCRIPT_DIR="/home/$USER/scripts" #Location of this script
+UPDATE_DIR="/home/$USER/updates" #Location of update information for the script's automatic update feature
 
 #Wine configuration
 WINE_ARCH="win32" #Architecture of the wine prefix
@@ -28,8 +32,8 @@ WINE_PREFIX_GAME_DIR="drive_c/Games/InterstellarRift" #Server executable directo
 WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline" #Server executable
 
 #Ramdisk configuration
-TMPFS_ENABLE="0" #Set this to 1 if you want to run the server on a ramdisk
-TMPFS_DIR="/home/$USER/tmpfs/$SRV_DIR_NAME" #Locaton of your ramdisk. Note: you have to configure the ramdisk in /etc/fstab before using this.
+TMPFS_ENABLE="1" #Set this to 1 if you want to run the server on a ramdisk
+TMPFS_DIR="/mnt/tmpfs/$SRV_DIR_NAME" #Locaton of your ramdisk. Note: you have to configure the ramdisk in /etc/fstab before using this.
 
 #TmpFs/hdd variables
 if [[ "$TMPFS_ENABLE" == "1" ]]; then
@@ -42,15 +46,17 @@ fi
 
 #Backup configuration
 BCKP_SRC="*" #What files to backup, * for all
-BCKP_DIR="/home/$USER/servers/$SRV_DIR_NAME/backups" #Location of stored backups
+BCKP_DIR="/home/$USER/backups" #Location of stored backups
 BCKP_DEST="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
 BCKP_DELOLD="+3" #Delete old backups. Ex +3 deletes 3 days old backups.
 
 #Log configuration
-export LOG_DIR="/home/$USER/servers/$SRV_DIR_NAME/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
+export LOG_DIR="/home/$USER/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
 export LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log
 export LOG_TMP="/tmp/$SERVICE_NAME-screen.log"
-LOG_DELOLD="+14" #Delete old logs. Ex +14 deletes 14 days old logs.
+LOG_DELOLD="+7" #Delete old logs. Ex +14 deletes 14 days old logs.
+
+TIMEOUT=120
 
 #-------Do not edit anything beyond this line-------
 
@@ -67,27 +73,27 @@ script_logs() {
 	if [ ! -d "$LOG_DIR" ]; then
 		mkdir -p $LOG_DIR
 	fi
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old logs) Deleting old logs: $LOG_DELOLD days old." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old logs) Deleting old logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	# Delete old logs
 	find $LOG_DIR -mtime $LOG_DELOLD -exec rm {} \;
 	# Delete empty folders
 	find $LOG_DIR -type d 2> /dev/null -empty -exec rm -rf {} \;
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old logs) Deleting old logs complete." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old logs) Deleting old logs complete." | tee -a "$LOG_SCRIPT"
 }
 
 #Prints out if the server is running
 script_status() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Status) Server is not running." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Status) Server is not running." | tee -a "$LOG_SCRIPT"
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Status) Server running." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Status) Server running." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
 #If the script variable is set to 0, the script won't issue any commands ran. It will just exit.
 script_enabled() {
 	if [[ "$SCRIPT_ENABLED" == "0" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Script status) Server script is disabled" | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Script status) Server script is disabled" | tee -a "$LOG_SCRIPT"
 		script_status
 		exit 0
 	fi
@@ -95,37 +101,37 @@ script_enabled() {
 
 script_crash_kill() {
 	if [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -gt "0" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe detected. Killing the process." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe detected. Killing the process." | tee -a "$LOG_SCRIPT"
 		kill $(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')
 		if [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -eq "" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe process killed." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe process killed." | tee -a "$LOG_SCRIPT"
 		elif [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -gt "0" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) Failed to kill AlunaCrashHandler.exe process." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) Failed to kill AlunaCrashHandler.exe process." | tee -a "$LOG_SCRIPT"
 		fi
 	elif [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -eq "" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe not detected. Server nominal." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe not detected. Server nominal." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
 #Issue the save command to the server
 script_save() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Server is not running." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Server is not running." | tee -a "$LOG_SCRIPT"
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk has been initiated." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk has been initiated." | tee -a "$LOG_SCRIPT"
 		( sleep 5 && screen -p 0 -S $NAME -X eval 'stuff "save"\\015' ) &
-		timeout 120 /bin/bash -c '
+		timeout $TIMEOUT /bin/bash -c '
 		while read line; do
 			if [[ "$line" =~ "[Server]: Save completed." ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk has been completed." | tee -a  "$LOG_SCRIPT"
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk has been completed." | tee -a "$LOG_SCRIPT"
 				break
 			else
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save game to disk is in progress. Please wait..."
 			fi
 		done < <(tail -n1 -f $LOG_TMP)'
-                if [ $? -eq 124 ]; then                                   
-                        echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save time limit exceeded."
-                fi
+		if [ $? -eq 124 ]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Save) Save time limit exceeded."
+		fi
 	fi
 }
 
@@ -133,40 +139,40 @@ script_save() {
 script_sync() {
 	if [[ "$TMPFS_ENABLE" == "1" ]]; then
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Server is not running." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Server is not running." | tee -a "$LOG_SCRIPT"
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Sync from tmpfs to disk has been initiated." | tee -a  "$LOG_SCRIPT"
-			rsync -av --info=progress2 $TMPFS_DIR/ $SRV_DIR #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Syncing: /" | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Sync from tmpfs to disk has been initiated." | tee -a "$LOG_SCRIPT"
+			rsync -av --info=progress2 $TMPFS_DIR/ $SRV_DIR #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Syncing: /" | tee -a "$LOG_SCRIPT"
 			sleep 1
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Sync from tmpfs to disk has been completed." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Sync from tmpfs to disk has been completed." | tee -a "$LOG_SCRIPT"
 		fi
 	elif [[ "$TMPFS_ENABLE" == "0" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Server does not have tmpfs enabled." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Sync) Server does not have tmpfs enabled." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
 #Start the server
 script_start() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "inactive" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server start initialized." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server start initialized." | tee -a "$LOG_SCRIPT"
 		systemctl --user start $SERVICE
 		sleep 1
 		while [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "activating" ]]; do
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server is activating. Please wait..." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server is activating. Please wait..." | tee -a "$LOG_SCRIPT"
 			sleep 1
 		done
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server has been successfully activated." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server has been successfully activated." | tee -a "$LOG_SCRIPT"
 			sleep 1
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server failed to activate. See systemctl --user status $SERVICE for details." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server failed to activate. See systemctl --user status $SERVICE for details." | tee -a "$LOG_SCRIPT"
 			sleep 1
 		fi
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server is already running." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server is already running." | tee -a "$LOG_SCRIPT"
 		sleep 1
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "failed" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server failed to activate. See systemctl --user status $SERVICE for details." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Start) Server failed to activate. See systemctl --user status $SERVICE for details." | tee -a "$LOG_SCRIPT"
 		sleep 1
 	fi
 }
@@ -174,26 +180,26 @@ script_start() {
 #Stop the server
 script_stop() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "inactive" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server is not running." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server is not running." | tee -a "$LOG_SCRIPT"
 		sleep 1
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server shutdown in progress." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server shutdown in progress." | tee -a "$LOG_SCRIPT"
 		systemctl --user stop $SERVICE
 		sleep 1
 		while [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "deactivating" ]]; do
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server is deactivating. Please wait..." | tee -a  "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server is deactivating. Please wait..." | tee -a "$LOG_SCRIPT"
 			sleep 1
 		done
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server is deactivated." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Stop) Server is deactivated." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
 #Restart the server
 script_restart() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "inactive" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Restart) Server is not running." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Restart) Server is not running." | tee -a "$LOG_SCRIPT"
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Restart) Server is going to restart in 15-30 seconds, please wait..." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Restart) Server is going to restart in 15-30 seconds, please wait..." | tee -a "$LOG_SCRIPT"
 		sleep 1
 		screen -p 0 -S $NAME -X eval 'stuff "/all Server restarting in 15 seconds."\\015'
 		sleep 1
@@ -207,22 +213,22 @@ script_restart() {
 #If the server proces is terminated it auto restarts it
 script_autorestart() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Autorestart) Server not running, attempting to start." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Autorestart) Server not running, attempting to start." | tee -a "$LOG_SCRIPT"
 		script_start
 		sleep 1
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Autorestart) Server running, no need to restart." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Autorestart) Server running, no need to restart." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
 #Deletes old backups
 script_deloldbackup() {
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old backup) Deleting old backups: $BCKP_DELOLD days old." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old backup) Deleting old backups: $BCKP_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	# Delete old backups
 	find $BCKP_DIR -mtime $BCKP_DELOLD -exec rm {} \;
 	# Delete empty folders
 	find $BCKP_DIR -type d 2> /dev/null -empty -exec rm -rf {} \;
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old backup) Deleting old backups complete." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old backup) Deleting old backups complete." | tee -a "$LOG_SCRIPT"
 }
 
 #Backs up the server
@@ -232,16 +238,16 @@ script_backup() {
 		mkdir -p $BCKP_DEST
 	fi
 	#Backup source to destination
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Backup has been initiated." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Backup has been initiated." | tee -a "$LOG_SCRIPT"
 	cd "$BCKP_SRC_DIR"
-	tar -cpvzf $BCKP_DEST/$(date +"%Y%m%d%H%M").tar.gz $BCKP_SRC #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a  "$LOG_SCRIPT"
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Backup complete." | tee -a  "$LOG_SCRIPT"
+	tar -cpvzf $BCKP_DEST/$(date +"%Y%m%d%H%M").tar.gz $BCKP_SRC #| sed -e "s/^/$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Compressing: /" | tee -a "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Backup) Backup complete." | tee -a "$LOG_SCRIPT"
 }
 
 #Automaticly backs up the server and deletes old backups
 script_autobackup() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Autobackup) Server is not running." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Autobackup) Server is not running." | tee -a "$LOG_SCRIPT"
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 		sleep 1
 		script_backup
@@ -252,7 +258,7 @@ script_autobackup() {
 
 #Check for updates. If there are updates available, shut down the server, update it and restart it.
 script_update() {
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Initializing update check." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Initializing update check." | tee -a "$LOG_SCRIPT"
 	if [ ! -f $UPDATE_DIR/installed.buildid ] ; then
 		touch $UPDATE_DIR/installed.buildid
 		echo "0" > $UPDATE_DIR/installed.buildid
@@ -262,16 +268,16 @@ script_update() {
 		echo "0" > $UPDATE_DIR/installed.timeupdated
 	fi
 	
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Removing Steam/appcache/appinfo.vdf" | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Removing Steam/appcache/appinfo.vdf" | tee -a "$LOG_SCRIPT"
 	rm -rf "/home/$USER/.steam/appcache/appinfo.vdf"
 	
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Connecting to steam servers." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Connecting to steam servers." | tee -a "$LOG_SCRIPT"
 	
 	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.buildid
 	
 	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.timeupdated
 	
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Received application info data." | tee -a  "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Received application info data." | tee -a "$LOG_SCRIPT"
 	
 	INSTALLED_BUILDID=$(cat $UPDATE_DIR/installed.buildid)
 	AVAILABLE_BUILDID=$(cat $UPDATE_DIR/available.buildid)
@@ -279,9 +285,9 @@ script_update() {
 	AVAILABLE_TIME=$(cat $UPDATE_DIR/available.timeupdated)
 	
 	if [ "$AVAILABLE_TIME" -gt "$INSTALLED_TIME" ]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) New update detected." | tee -a  "$LOG_SCRIPT"
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Installed: BuildID: $INSTALLED_BUILDID, TimeUpdated: $INSTALLED_TIME" | tee -a  "$LOG_SCRIPT"
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Available: BuildID: $AVAILABLE_BUILDID, TimeUpdated: $AVAILABLE_TIME" | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) New update detected." | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Installed: BuildID: $INSTALLED_BUILDID, TimeUpdated: $INSTALLED_TIME" | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Available: BuildID: $AVAILABLE_BUILDID, TimeUpdated: $AVAILABLE_TIME" | tee -a "$LOG_SCRIPT"
 		sleep 1
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 			#screen -p 0 -S $NAME -X eval 'stuff "/all New update detected. Server will shutdown and update."\\015'
@@ -292,9 +298,9 @@ script_update() {
 		if [[ "$TMPFS_ENABLE" == "1" ]]; then
 			rm -rf $TMPFS_DIR/$WINE_PREFIX_GAME_DIR
 		fi
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Updating..." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Updating..." | tee -a "$LOG_SCRIPT"
 		steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID validate +quit
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Update completed." | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Update completed." | tee -a "$LOG_SCRIPT"
 		echo "$AVAILABLE_BUILDID" > $UPDATE_DIR/installed.buildid
 		echo "$AVAILABLE_TIME" > $UPDATE_DIR/installed.timeupdated
 		if [ "$WAS_RUNNING" == "1" ]; then
@@ -308,8 +314,8 @@ script_update() {
 			script_start
 		fi
 	elif [ "$AVAILABLE_TIME" -eq "$INSTALLED_TIME" ]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) No new updates detected." | tee -a  "$LOG_SCRIPT"
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Installed: BuildID: $INSTALLED_BUILDID, TimeUpdated: $INSTALLED_TIME" | tee -a  "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) No new updates detected." | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Installed: BuildID: $INSTALLED_BUILDID, TimeUpdated: $INSTALLED_TIME" | tee -a "$LOG_SCRIPT"
 	fi
 }
 
@@ -337,73 +343,75 @@ script_timer_two() {
 }
 
 script_install() {
-	echo "Installation 1/3"
+	echo "Installation"
 	echo ""
 	echo "Required packages that need to be installed on the server:"
-	echo "xorg-xauth"
-	echo "xorg-xhost"
+	echo "xvfb"
 	echo "wine"
+	echo "winetricks"
 	echo "screen"
 	echo "steamcmd"
 	echo ""
-	echo "Required packages that need to be installed on the client:"
-	echo "xorg-xauth"
-	echo ""
 	echo "If these packages aren't installed, terminate this script with CTRL+C and install them."
+	echo "Also make sure that you edited this script and entered your steam username and password at the top of the script."
+	echo "In the middle of the installation process you will be asked for a steam guard code. Also make sure your steam guard"
+	echo "is set to email only (don't use the mobile app and don't use no second authentication. USE STEAM GUARD VIA EMAIL!"
 	echo ""
-	echo "This installation will enable linger for the user specified (allows user services to be ran on boot)."
-	echo "The installation process will also make a modification to /etc/ssh/sshd_config to allow X11 GUI forwarding to your"
-	echo "local machine so you can install the wine prefix. For this to work edit your /etc/ssh/sshd_config on your"
-	echo "local machine and uncomment the line:"
-	echo "#X11Forwarding yes"
-	echo "so it looks like this:"
-	echo "X11Forwarding yes"
-	echo "After that reboot both machines or restart the ssh services."
-	echo ""
-	read -p "Press any key to continue" -n 1 -s -r
-	echo ""
-	read -p "Enter user (MUST NOT BE ROOT!): " USER
-	echo ""
-	read -p "Enable RamDisk (1-yes, 0-no): " TMPFS
-	echo ""
-	if [[ "$TMPFS" == "1" ]]; then
-		read -p "RamDisk Size (Minimum 6GB): " TMPFS_SIZE
-	fi
-	if [[ "$TMPFS" == "1" ]]; then
-		cat >> /etc/fstab <<- EOF
-	
-		# /home/$USER/tmpfs
-		tmpfs				   /home/$USER/tmpfs		tmpfs		   rw,size=$TMPFS_SIZE,uid=$USER	0 0
-		EOF
-	fi
-	sudo sed -i 's/#AllowTcpForwarding yes/AllowTcpForwarding yes/g' /etc/ssh/sshd_config
-	sudo sed -i 's/#X11Forwarding yes/X11Forwarding yes yes/g' /etc/ssh/sshd_config 
-	sudo sed -i 's/#X11DisplayOffset 10/X11DisplayOffset 10/g' /etc/ssh/sshd_config 
-	sudo sed -i 's/#X11UseLocalhost yes/X11UseLocalhost yes/g' /etc/ssh/sshd_config 
-	
-	sudo mkdir -p /var/lib/systemd/linger/
-	sudo touch /var/lib/systemd/linger/$USER
-	
-	echo "Installation 1/3 complete."
-	echo "After you reboot the server and your local machine connect to the server with ssh -Y user@host"
-}
-
-script_install_services() {
-	echo "Installation 2/3"
-	echo ""
-	echo "Initializing service instalation."
+	echo "The installation will enable linger for the user specified (allows user services to be ran on boot)."
 	echo ""
 	echo "List of files that are going to be generated on the system:"
 	echo ""
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service - Service to generate the folder structure once the RamDisk is started (only executes if RamDisk enabled)."
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-tmpfs - Server service file for use with a RamDisk (only executes if RamDisk enabled)."
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME - Server service file for normal hdd/ssd use."
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-tmpfs.service - Server service file for use with a RamDisk (only executes if RamDisk enabled)."
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME.service - Server service file for normal hdd/ssd use."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-1.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service - Executes scheduled script functions: autorestart, save, sync, backup and update."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.service - Executes scheduled script functions: autorestart, save, sync and update."
 	echo ""
 	read -p "Press any key to continue" -n 1 -s -r
+	echo ""
+	read -p "Enter password for user $USER: " USER_PASS
+	echo ""
+	read -p "Enable RamDisk (y/n): " TMPFS
+	echo ""
+	
+	sudo useradd -m -g users -s /bin/bash $USER
+	echo -en "$USER_PASS\n$USER_PASS\n" | sudo passwd $USER
+	
+	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		read -p "Do you already have a ramdisk mounted at /mnt/tmpfs? (y/n): " TMPFS_PRESENT
+		if [[ "$TMPFS_PRESENT" =~ ^([nN][oO]|[nN])$ ]]; then
+			read -p "Ramdisk size (Minimum of 6GB for a single server, 12GB for two and so on): " TMPFS_SIZE
+			echo "Installing ramdisk configuration"
+			cat >> /etc/fstab <<- EOF
+			
+			# /mnt/tmpfs
+			tmpfs				   /mnt/tmpfs		tmpfs		   rw,size=$TMPFS_SIZE,gid=users,mode=0777	0 0
+			EOF
+		fi
+	fi
+	
+	echo "Enabling linger"
+	sudo mkdir -p /var/lib/systemd/linger/
+	sudo touch /var/lib/systemd/linger/$USER
+	sudo mkdir -p /home/$USER/.config/systemd/user
+	
+	echo "Installing bash profile"
+	cat > /home/$USER/.bash_profile <<- 'EOF'
+	#
+	# ~/.bash_profile
+	#
+	
+	[[ -f ~/.bashrc ]] && . ~/.bashrc
+	
+	export XDG_RUNTIME_DIR="/run/user/$UID"
+	export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+	EOF
+	
+	sudo chown $USER:users /home/$USER/.bash_profile
+	
+	echo "Installing service files"
 	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service <<- EOF
 	[Unit]
 	Description=$NAME TmpFs dir creator
@@ -529,15 +537,27 @@ script_install_services() {
 	ExecStart=$SCRIPT_DIR/$SCRIPT_NAME -timer_two
 	EOF
 	
-	if [[ "$TMPFS" == "1" ]]; then
-		systemctl --user enable $SERVICE_NAME-mkdir-tmpfs.service
+	sudo chown -R $USER:users /home/$USER/.config/systemd/user
+	
+	echo "Enabling services"
+		
+	sudo systemctl start user@$(id -u $USER).service
+	
+	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-1.timer"
+	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-2.timer"
+	
+	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		su - $USER -c "systemctl --user enable $SERVICE_NAME-mkdir-tmpfs.service"
+		su - $USER -c "systemctl --user enable $SERVICE_NAME-tmpfs.service"
+	elif [[ "$TMPFS" =~ ^([nN][oO]|[nN])$ ]]; then
+		su - $USER -c "systemctl --user enable $SERVICE_NAME.service"
 	fi
 	
-	systemctl --user enable $SERVICE_NAME-timer-1.timer $SERVICE_NAME-timer-2.timer
-	
 	echo "Creating folder structure for server..."
-	mkdir -p /home/$USER/servers/$SRV_DIR_NAME/{backups,logs,scripts,server,updates}
+	mkdir -p /home/$USER/{backups,logs,scripts,server,updates}
+	cp "$(readlink -f $0)" $SCRIPT_DIR
 	
+	echo "Installing screen configuration for server console and logs"
 	cat > $SCRIPT_DIR/$SERVICE_NAME-screen.conf <<- EOF
 	#
 	# This is an example for the global screenrc file.
@@ -639,21 +659,53 @@ script_install_services() {
 	deflog on
 	EOF
 	
-	echo "Installation 2/3 complete."
-}
-
-script_install_wine_prefix() {
-	echo "Installation 3/3"
+	sudo chown -R $USER:users /home/$USER/{backups,logs,scripts,server,updates}
+	
+	echo "Generating wine prefix"
+	
+	su - $USER <<- EOF
+	Xvfb :5 -screen 0 1024x768x16 &
+	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineboot --init /nogui
+	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wine uninstaller --remove $(su - $USER -c "env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wine uninstaller --list | grep 'Wine Mono Runtime' | sed 's/}.*/}/'") $(su - $USER -c "env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wine uninstaller --list | grep 'Wine Mono Windows Support' | sed 's/}.*/}/'")
+	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks corefonts
+	env DISPLAY=:5.0 WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q vcrun2012
+	env DISPLAY=:5.0 WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q dotnet472
+	pkill -f Xvfb
+	EOF
+	
+	echo "Updating and logging in to Steam. Prepare to enter Steam Guard code..."
+	
+	#su - $USER <<- EOF
+	#echo -en "/n" | steamcmd +login $STEAMCMDUID $STEAMCMDPSW +quit
+	#EOF
+	
+	#read -p "Enter Steam Guard code: " STEAMCMDSG
+	
+	#su - $USER -c "steamcmd +login $STEAMCMDUID $STEAMCMDPSW $STEAMCMDSG +quit"
+	
+	echo "Installing game..."
+	
+	su - $USER <<- EOF
+	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.buildid
+	EOF
+	
+	su - $USER <<- EOF
+	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.timeupdated
+	EOF
+	
+	su - $USER -c "steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID validate +quit"
+	
+	mkdir -p $BCKP_SRC_DIR
+	chown -R $USER:users $BCKP_SRC_DIR
+	
+	
+	echo "Installation complete"
 	echo ""
-	echo "This will install the wine prefix. There will be some GUI interaction necessary."
-	echo "The wine uninstaller window will pop up at one time. Uninstall evreything related to Mono."
+	echo "Copy your SSK.txt to $BCKP_SRC_DIR"
+	echo "After you copied your SSK.txt reboot the server and the game server will start up with it."
+	echo "You can login to your the $USER account with <sudo -i -u $USER> from your primary account or root account."
+	echo "The script was automaticly copied to the scripts folder so any settings you want to change edit that file."
 	echo ""
-	read -p "Press any key to continue" -n 1 -s -r
-	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineboot --init
-	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wine uninstaller
-	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks corefonts vcrun2012 dotnet472
-	echo ""
-	echo "Instalation 3/3 complete."
 }
 
 #Do not allow for another instance of this script to run to prevent data loss
@@ -683,21 +735,13 @@ case "$1" in
 		echo -e "${GREEN}deloldbackup ${RED}- ${GREEN}Delete old backups${NC}"
 		echo -e "${GREEN}update ${RED}- ${GREEN}Update the server, if the server is running it wil save it, shut it down, update it and restart it.${NC}"
 		echo -e "${GREEN}status ${RED}- ${GREEN}Display status of server${NC}"
-		echo -e "${GREEN}install ${RED}- ${GREEN}Installs all the needed files for the script to run${NC}"
-		echo -e "${GREEN}install-services ${RED}- ${GREEN}Installs systemd services for the server${NC}"
-		echo -e "${GREEN}install-prefix ${RED}- ${GREEN}Installs the wine prefix to the coresponding folder. There will be a lot of GUI interaction involved.${NC}"
+		echo -e "${GREEN}install ${RED}- ${GREEN}Installs all the needed files for the script to run, the wine prefix and the game.${NC}"
 		echo ""
 		echo -e "${LIGHTRED}If this is your first time running the script:${NC}"
-		echo -e "${LIGHTRED}First use the -install argument (run only this command as root) and follow the instructions${NC}"
-		echo -e "${LIGHTRED}Second, run the -install_services argument. It will install the services for the server.${NC}"
-		echo -e "${LIGHTRED}Third, run the -install-prefix argument. It will install the wine prefix. There will be a lot of GUI interaction involved.${NC}"
-		echo -e "${LIGHTRED}Lastly you can run the script with the -update argument to install the game.${NC}"
-		echo -e "${LIGHTRED}Your server configuration file and SSK should be put in $SRV_DIR/drive_c/users/$USER/Application Data/InterstellarRift/${NC}"
-		echo -e "${LIGHTRED}When all of this is done copy/move this script to $SCRIPT_DIR ${NC}"
+		echo -e "${LIGHTRED}Use the -install argument (run only this command as root) and follow the instructions${NC}"
+		echo -e "${LIGHTRED}The location you will have to paste your SSK.txt in will be displayed at the end of the installation.${NC}"
 		echo ""
-		echo -e "${LIGHTRED}After that enable the correct service with: systemctl --user enable $SERVICE_NAME.service or"
-		echo -e "${LIGHTRED}systemctl --user enable $SERVICE_NAME-tmpfs.service for the RamDisk variant (USE ONLY ONE!)${NC}"
-		echo -e "${LIGHTRED}Now start the service with systemctl --user start $SERVICE_NAME.service or systemctl --user start $SERVICE_NAME-tmpfs.service${NC}"
+		echo -e "${LIGHTRED}After that paste in you SSK.txt then reboot the server. After that the game should start on it's own"
 		echo ""
 		echo -e "${LIGHTRED}Example usage: ./$SCRIPT_NAME -start${NC}"
 		echo ""
@@ -740,12 +784,6 @@ case "$1" in
 	-install)
 		script_install
 		;;
-	-install_services)
-		script_install_services
-		;;
-	-install-prefix)
-		script_install_wine_prefix
-		;;
 	-crash_kill)
 		script_crash_kill
 		;;
@@ -756,7 +794,7 @@ case "$1" in
 		script_timer_two
 		;;
 	*)
-	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|autorestart|update|status|install|install_services|install-prefix \"server command\"}"
+	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|autorestart|update|status|install \"server command\"}"
 	exit 1
 	;;
 esac
@@ -765,3 +803,4 @@ exit 0
 
 
 #if [[ "$(systemctl --user is-active $SERVICE)" != "active" ]]; then
+
