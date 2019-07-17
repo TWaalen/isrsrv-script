@@ -1,6 +1,18 @@
 # isrsrv-script
 Bash script for running Interstellar Rift on a linux server
 
+**Required packages**
+
+-xvfb
+
+-screen
+
+-steamcmd
+
+-wine
+
+-winetricks
+
 **Features:**
 
 -auto backups
