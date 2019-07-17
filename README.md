@@ -47,34 +47,11 @@ steamcmd login username password
 
 Now for the installation.
 
-First use the -install argument (run only this command as root) and follow the instructions Second, run the -install_services argument. It will install the services for the server.
+First use the -install argument (run only this command as root) and follow the instructions.
 
-Reboot the server. Log back in with "ssh -Y user@host" without quotes to enable X11 forwarding.
+Set "AutoSaveDelay" and "BackupSaveDelay" to 0 to disable the integrated saves and backups. The script will take care of saving and backups. This is required is using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
 
-Now run the -install-prefix argument. It will install the wine prefix. There will be a lot of GUI interaction involved.
-Also when the uninstaller shows up remove everything related to mono.
-
-Lastly you can run the script with the -update argument to install the game. Your server configuration file and SSK should be put in /path/to/prefix/drive_c/users/your_username/Application Data/InterstellarRift/ When all of this is done copy/move this script to the script folder.
-
-Set "AutoSaveDelay" and "BackupSaveDelay" to something ridiculous like 31556926.0 wich is a year. The script will take care of saving and backups. This is required is using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
-
-After that enable the correct service with:
-
-systemctl --user enable isrsrv.service
-
-or for the RamDisk variant
-
-systemctl --user enable isrsrv-tmpfs.service
-
-USE ONLY ONE!
-
-Now start the service with:
-
-systemctl --user start isrsrv.service
-
-or again for the RamDisk variant
-
-systemctl --user start isrsrv-tmpfs.service
+After that paste in you SSK.txt and then reboot the server. After that the game should start on it's own
 
 That should be it.
 
