@@ -51,11 +51,7 @@ to
 
 TMPFS_ENABLE="1"
 
-Run steamcmd and login with your account at least once to enter the first two factor authentication code and after that steamcmd will not ask you for another code once it runs.
-
-
-steamcmd login username password
-
+Sometime between the insallation process you will be prompted for steam's two factor authentication code and after that steamcmd will not ask you for another code once it runs if you are using steam guard via email.
 
 Now for the installation.
 
