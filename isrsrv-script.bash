@@ -311,6 +311,7 @@ script_update() {
 				mkdir -p $SRV_DIR/$WINE_PREFIX_GAME_DIR/Build
 			fi
 			sleep 1
+			SCRIPT_ENABLED="1"
 			script_start
 		fi
 	elif [ "$AVAILABLE_TIME" -eq "$INSTALLED_TIME" ]; then
