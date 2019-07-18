@@ -10,7 +10,8 @@ export NAME="IsRSrv" #Name of the screen
 if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the username for the installation process, otherwise use the executing user
 	USER="$(whoami)"
 else
-	read -p "Please enter username (default interstellar_rift):" USER
+	echo "WARNING: Installation mode"
+	read -p "Please enter username (default interstellar_rift):" USER #Enter desired username that will be used when creating the new user
 fi
 
 #Steamcmd login
@@ -201,8 +202,6 @@ script_restart() {
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Restart) Server is going to restart in 15-30 seconds, please wait..." | tee -a "$LOG_SCRIPT"
 		sleep 1
-		screen -p 0 -S $NAME -X eval 'stuff "/all Server restarting in 15 seconds."\\015'
-		sleep 1
 		script_stop
 		sleep 1
 		script_start
@@ -290,8 +289,7 @@ script_update() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Available: BuildID: $AVAILABLE_BUILDID, TimeUpdated: $AVAILABLE_TIME" | tee -a "$LOG_SCRIPT"
 		sleep 1
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-			#screen -p 0 -S $NAME -X eval 'stuff "/all New update detected. Server will shutdown and update."\\015'
-			WAS_RUNNING="1"
+			WAS_ACTIVE="1"
 			script_stop
 		fi
 		sleep 1
@@ -303,7 +301,7 @@ script_update() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Update) Update completed." | tee -a "$LOG_SCRIPT"
 		echo "$AVAILABLE_BUILDID" > $UPDATE_DIR/installed.buildid
 		echo "$AVAILABLE_TIME" > $UPDATE_DIR/installed.timeupdated
-		if [ "$WAS_RUNNING" == "1" ]; then
+		if [ "$WAS_ACTIVE" == "1" ]; then
 			if [[ "$TMPFS_ENABLE" == "1" ]]; then
 				mkdir -p $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/Build
 				mkdir -p $SRV_DIR/$WINE_PREFIX_GAME_DIR/Build
@@ -359,6 +357,7 @@ script_install() {
 	echo "is set to email only (don't use the mobile app and don't use no second authentication. USE STEAM GUARD VIA EMAIL!"
 	echo ""
 	echo "The installation will enable linger for the user specified (allows user services to be ran on boot)."
+	echo "It will also enable the services needed to run the game server by your specifications."
 	echo ""
 	echo "List of files that are going to be generated on the system:"
 	echo ""
@@ -676,13 +675,13 @@ script_install() {
 	
 	echo "Updating and logging in to Steam. Prepare to enter Steam Guard code..."
 	
-	#su - $USER <<- EOF
-	#echo -en "/n" | steamcmd +login $STEAMCMDUID $STEAMCMDPSW +quit
-	#EOF
+	su - $USER <<- EOF
+	echo -en "/n" | steamcmd +login $STEAMCMDUID $STEAMCMDPSW +quit
+	EOF
 	
-	#read -p "Enter Steam Guard code: " STEAMCMDSG
+	read -p "Enter Steam Guard code: " STEAMCMDSG
 	
-	#su - $USER -c "steamcmd +login $STEAMCMDUID $STEAMCMDPSW $STEAMCMDSG +quit"
+	su - $USER -c "steamcmd +login $STEAMCMDUID $STEAMCMDPSW $STEAMCMDSG +quit"
 	
 	echo "Installing game..."
 	
@@ -703,7 +702,7 @@ script_install() {
 	echo "Installation complete"
 	echo ""
 	echo "Copy your SSK.txt to $BCKP_SRC_DIR"
-	echo "After you copied your SSK.txt reboot the server and the game server will start up with it."
+	echo "After you copied your SSK.txt reboot the server and the game server will start on boot."
 	echo "You can login to your the $USER account with <sudo -i -u $USER> from your primary account or root account."
 	echo "The script was automaticly copied to the scripts folder so any settings you want to change edit that file."
 	echo ""
@@ -742,7 +741,7 @@ case "$1" in
 		echo -e "${LIGHTRED}Use the -install argument (run only this command as root) and follow the instructions${NC}"
 		echo -e "${LIGHTRED}The location you will have to paste your SSK.txt in will be displayed at the end of the installation.${NC}"
 		echo ""
-		echo -e "${LIGHTRED}After that paste in you SSK.txt then reboot the server. After that the game should start on it's own"
+		echo -e "${LIGHTRED}After that paste in your SSK.txt then reboot the server, the game should start on it's own on boot."
 		echo ""
 		echo -e "${LIGHTRED}Example usage: ./$SCRIPT_NAME -start${NC}"
 		echo ""
@@ -795,13 +794,14 @@ case "$1" in
 		script_timer_two
 		;;
 	*)
+	echo -e "${CYAN}Time: $(date +"%Y-%m-%d %H:%M:%S") ${NC}"
+	echo -e "${CYAN}$NAME server script by 7thCore${NC}"
+	echo ""
+	echo "For more detailed information, execute the script with the -help argument"
+	echo ""
 	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|autorestart|update|status|install \"server command\"}"
 	exit 1
 	;;
 esac
 
 exit 0
-
-
-#if [[ "$(systemctl --user is-active $SERVICE)" != "active" ]]; then
-
