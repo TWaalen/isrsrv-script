@@ -705,7 +705,7 @@ script_install() {
 	echo "After you copied your SSK.txt reboot the server and the game server will start on boot."
 	echo "You can login to your the $USER account with <sudo -i -u $USER> from your primary account or root account."
 	echo "The script was automaticly copied to the scripts folder located at $SCRIPT_DIR"
-	echo "Any settings you want to change edit that file."
+	echo "For any settings you'll want to change, edit that file."
 	echo ""
 }
 
