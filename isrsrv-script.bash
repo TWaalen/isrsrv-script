@@ -704,7 +704,8 @@ script_install() {
 	echo "Copy your SSK.txt to $BCKP_SRC_DIR"
 	echo "After you copied your SSK.txt reboot the server and the game server will start on boot."
 	echo "You can login to your the $USER account with <sudo -i -u $USER> from your primary account or root account."
-	echo "The script was automaticly copied to the scripts folder so any settings you want to change edit that file."
+	echo "The script was automaticly copied to the scripts folder located at $SCRIPT_DIR"
+	echo "Any settings you want to change edit that file."
 	echo ""
 }
 
