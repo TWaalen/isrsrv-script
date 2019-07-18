@@ -12,6 +12,7 @@ if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the use
 else
 	echo "WARNING: Installation mode"
 	read -p "Please enter username (default interstellar_rift):" USER #Enter desired username that will be used when creating the new user
+	USER=${USER:=interstellar_rift} #If no username was given, use default
 fi
 
 #Steamcmd login
