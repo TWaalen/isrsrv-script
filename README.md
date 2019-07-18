@@ -57,9 +57,9 @@ Now for the installation.
 
 First use the -install argument (run only this command as root) and follow the instructions.
 
-Set "AutoSaveDelay" and "BackupSaveDelay" to 0 to disable the integrated saves and backups. The script will take care of saving and backups. This is required is using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
+Set "AutoSaveDelay" and "BackupSaveDelay" in server.json to 0 to disable the integrated saves and backups. The script will take care of saving and backups. This is required is using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
 
-After that paste in you SSK.txt and then reboot the server. After that the game should start on it's own
+After that paste in you SSK.txt and then reboot the server. After that the game should start on boot.
 
 That should be it.
 
