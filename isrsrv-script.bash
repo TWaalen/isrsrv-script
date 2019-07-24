@@ -441,6 +441,8 @@ script_install() {
 	ExecStop=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 server shutting down in 15 seconds"\\015'
 	ExecStop=/bin/sleep 20
+	ExecStop=env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR wineserver -k
+	ExecStop=/bin/sleep 10
 	ExecStop=/usr/bin/rsync -av --info=progress2 $TMPFS_DIR/ $SRV_DIR
 	TimeoutStartSec=infinity
 	TimeoutStopSec=300
@@ -463,6 +465,8 @@ script_install() {
 	ExecStop=/usr/bin/sed -i 's/SCRIPT_ENABLED="1"/SCRIPT_ENABLED="0"/' $SCRIPT_DIR/$SCRIPT_NAME
 	ExecStop=/usr/bin/screen -p 0 -S $NAME -X eval 'stuff "quittimer 15 server shutting down in 15 seconds"\\015'
 	ExecStop=/bin/sleep 20
+	ExecStop=env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineserver -k
+	ExecStop=/bin/sleep 10
 	TimeoutStartSec=infinity
 	TimeoutStopSec=300
 	Restart=no
