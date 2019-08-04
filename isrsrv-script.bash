@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908041510"
+VERSION="201908041745"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -584,7 +584,7 @@ script_install() {
 	
 	[Service]
 	Type=oneshot
-	ExecStart=$SCRIPT_DIR/$SCRIPT_UPDATE_NAME
+	ExecStart=$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	EOF
 	
 	sudo chown -R $USER:users /home/$USER/.config/systemd/user
