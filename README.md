@@ -35,6 +35,8 @@ Bash script for running Interstellar Rift on a linux server
 
 -shutdown gracefully on os shutdown
 
+-script auto update from github
+
 **Instructions:**
 
 Log in to your server with ssh and execute:
