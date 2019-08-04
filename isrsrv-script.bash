@@ -4,6 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
+VERSION="201908041138"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -542,6 +543,50 @@ script_install() {
 	ExecStart=$SCRIPT_DIR/$SCRIPT_NAME -timer_two
 	EOF
 	
+	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer <<- EOF
+	[Unit]
+	Description=$NAME Script Timer 3
+	
+	[Timer]
+	OnCalendar=*-*-* *:10:00
+	OnCalendar=*-*-* *:25:00
+	OnCalendar=*-*-* *:40:00
+	OnCalendar=*-*-* 00:55:00
+	OnCalendar=*-*-* 01:55:00
+	OnCalendar=*-*-* 02:55:00
+	OnCalendar=*-*-* 03:55:00
+	OnCalendar=*-*-* 04:55:00
+	OnCalendar=*-*-* 05:55:00
+	OnCalendar=*-*-* 07:55:00
+	OnCalendar=*-*-* 08:55:00
+	OnCalendar=*-*-* 09:55:00
+	OnCalendar=*-*-* 10:55:00
+	OnCalendar=*-*-* 11:55:00
+	OnCalendar=*-*-* 13:55:00
+	OnCalendar=*-*-* 14:55:00
+	OnCalendar=*-*-* 15:55:00
+	OnCalendar=*-*-* 16:55:00
+	OnCalendar=*-*-* 17:55:00
+	OnCalendar=*-*-* 19:55:00
+	OnCalendar=*-*-* 20:55:00
+	OnCalendar=*-*-* 21:55:00
+	OnCalendar=*-*-* 22:55:00
+	OnCalendar=*-*-* 23:55:00
+	Persistent=true
+	
+	[Install]
+	WantedBy=timers.target
+	EOF
+	
+	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service <<- EOF
+	[Unit]
+	Description=$NAME Script Timer 3 Service
+	
+	[Service]
+	Type=oneshot
+	ExecStart=$SCRIPT_DIR/$SCRIPT_UPDATE_NAME
+	EOF
+	
 	sudo chown -R $USER:users /home/$USER/.config/systemd/user
 	
 	echo "Enabling services"
@@ -550,6 +595,7 @@ script_install() {
 	
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-1.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-2.timer"
+	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-3.timer"
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		su - $USER -c "systemctl --user enable $SERVICE_NAME-mkdir-tmpfs.service"
@@ -663,6 +709,32 @@ script_install() {
 	logfile flush 0
 	deflog on
 	EOF
+	
+	echo '#!/bin/bash' > /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'git clone https://github.com/7thCore/'"$SERVICE_NAME"'-script /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'SERVICE_NAME='"$SERVICE_NAME" >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'LOG_DIR="/home/'"$USER"'/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'INSTALLED=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'AVAILABLE=$(cat /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash | grep VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'if [ "$AVAILABLE" -gt "$INSTALLED" ]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Script update detected." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Installed:$INSTALLED, available:$AVAILABLE" | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	rm /home/kacm/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/kacm/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	if [ "$AVAILABLE" -eq "$INSTALLED" ]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Script update complete." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	else' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Script update failed." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'else' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) No new script updates detected." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Installed:$INSTALLED, available:$AVAILABLE" | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'fi' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo 'rm -rf /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	
 	sudo chown -R $USER:users /home/$USER/{backups,logs,scripts,server,updates}
 	
