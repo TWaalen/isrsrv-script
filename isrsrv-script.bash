@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908041745"
+VERSION="201908071525"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -16,11 +16,6 @@ else
 	USER=${USER:=interstellar_rift} #If no username was given, use default
 fi
 
-#Steamcmd login
-STEAMCMDUID="user" #Your steam username
-STEAMCMDPSW="password" #Your steam password
-APPID="363360" #app id of the steam game
-
 #Server configuration
 SERVICE_NAME="isrsrv" #Name of the service files, script and script log
 SRV_DIR_NAME="interstellar_rift" #Main directory name
@@ -28,6 +23,11 @@ SRV_DIR="/home/$USER/server" #Location of the server located on your hdd/ssd
 SCRIPT_NAME="$SERVICE_NAME-script.bash" #Script name
 SCRIPT_DIR="/home/$USER/scripts" #Location of this script
 UPDATE_DIR="/home/$USER/updates" #Location of update information for the script's automatic update feature
+
+#Steamcmd login
+STEAMCMDUID=$(cat $SCRIPT_DIR/$SERVICE_NAME-steam.txt | grep username | cut -d = -f2) #Your steam username
+STEAMCMDPSW=$(cat $SCRIPT_DIR/$SERVICE_NAME-steam.txt | grep password | cut -d = -f2) #Your steam password
+APPID="363360" #app id of the steam game
 
 #Wine configuration
 WINE_ARCH="win32" #Architecture of the wine prefix
@@ -374,6 +374,10 @@ script_install() {
 	read -p "Press any key to continue" -n 1 -s -r
 	echo ""
 	read -p "Enter password for user $USER: " USER_PASS
+	echo ""
+	read -p "Enter your steam username: " STEAMCMDUID
+	echo ""
+	read -p "Enter your steam password: " STEAMCMDPSW
 	echo ""
 	read -p "Enable RamDisk (y/n): " TMPFS
 	echo ""
@@ -738,6 +742,10 @@ script_install() {
 	echo 'fi' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo 'rm -rf /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	
+	touch $SCRIPT_DIR/$SERVICE_NAME-steam.txt
+	echo 'username='"$STEAMCMDUID" > $SCRIPT_DIR/$SERVICE_NAME-steam.txt
+	echo 'password='"$STEAMCMDPSW" >> $SCRIPT_DIR/$SERVICE_NAME-steam.txt
 	
 	sudo chown -R $USER:users /home/$USER/{backups,logs,scripts,server,updates}
 	
