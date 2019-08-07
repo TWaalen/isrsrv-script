@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908071658"
+VERSION="201908072233"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -18,15 +18,14 @@ fi
 
 #Server configuration
 SERVICE_NAME="isrsrv" #Name of the service files, script and script log
-SRV_DIR_NAME="interstellar_rift" #Main directory name
 SRV_DIR="/home/$USER/server" #Location of the server located on your hdd/ssd
 SCRIPT_NAME="$SERVICE_NAME-script.bash" #Script name
 SCRIPT_DIR="/home/$USER/scripts" #Location of this script
 UPDATE_DIR="/home/$USER/updates" #Location of update information for the script's automatic update feature
 
 #Steamcmd login
-STEAMCMDUID=$(cat $SCRIPT_DIR/$SERVICE_NAME-steam.txt | grep username | cut -d = -f2) #Your steam username
-STEAMCMDPSW=$(cat $SCRIPT_DIR/$SERVICE_NAME-steam.txt | grep password | cut -d = -f2) #Your steam password
+STEAMCMDUID=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep username | cut -d = -f2) #Your steam username
+STEAMCMDPSW=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep password | cut -d = -f2) #Your steam password
 APPID="363360" #app id of the steam game
 
 #Wine configuration
@@ -35,8 +34,8 @@ WINE_PREFIX_GAME_DIR="drive_c/Games/InterstellarRift" #Server executable directo
 WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline -linux -nossl" #Server executable
 
 #Ramdisk configuration
-TMPFS_ENABLE="1" #Set this to 1 if you want to run the server on a ramdisk
-TMPFS_DIR="/mnt/tmpfs/$SRV_DIR_NAME" #Locaton of your ramdisk. Note: you have to configure the ramdisk in /etc/fstab before using this.
+TMPFS_ENABLE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep tmpfs_enable | cut -d = -f2) #Set this to 1 if you want to run the server on a ramdisk
+TMPFS_DIR="/mnt/tmpfs/$USER" #Locaton of your ramdisk. Note: you have to configure the ramdisk in /etc/fstab before using this.
 
 #TmpFs/hdd variables
 if [[ "$TMPFS_ENABLE" == "1" ]]; then
@@ -354,7 +353,7 @@ script_install() {
 	echo "steamcmd"
 	echo ""
 	echo "If these packages aren't installed, terminate this script with CTRL+C and install them."
-	echo "Also make sure that you edited this script and entered your steam username and password at the top of the script."
+	echo "The script will ask you for your steam username and password and will store it in a configuration file for automatic updates."
 	echo "In the middle of the installation process you will be asked for a steam guard code. Also make sure your steam guard"
 	echo "is set to email only (don't use the mobile app and don't use no second authentication. USE STEAM GUARD VIA EMAIL!"
 	echo ""
@@ -372,6 +371,13 @@ script_install() {
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.service - Executes scheduled script functions: autorestart, save, sync and update."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service - Executes scheduled update checks for this script"
+	echo "$SCRIPT_DIR/$SERVICE_NAME-update.bash - Update script for automatic updates from github."
+	echo "$SCRIPT_DIR/$SERVICE_NAME-config.conf - Stores steam username and password. Also stores tmpfs/ramdisk setting."
+	echo "$SCRIPT_DIR/$SERVICE_NAME-screen.conf - Screen configuration to enable logging."
+	echo "$UPDATE_DIR/installed.buildid - Information on installed buildid (AppInfo from Steamcmd)"
+	echo "$UPDATE_DIR/available.buildid - Information on available buildid (AppInfo from Steamcmd)"
+	echo "$UPDATE_DIR/installed.timeupdated - Information on time the server was last updated (AppInfo from Steamcmd)"
+	echo "$UPDATE_DIR/available.timeupdated - Information on time the server was last updated (AppInfo from Steamcmd)"
 	echo ""
 	read -p "Press any key to continue" -n 1 -s -r
 	echo ""
@@ -388,6 +394,7 @@ script_install() {
 	echo -en "$USER_PASS\n$USER_PASS\n" | sudo passwd $USER
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		TMPFS_ENABLE="1"
 		read -p "Do you already have a ramdisk mounted at /mnt/tmpfs? (y/n): " TMPFS_PRESENT
 		if [[ "$TMPFS_PRESENT" =~ ^([nN][oO]|[nN])$ ]]; then
 			read -p "Ramdisk size (Minimum of 6GB for a single server, 12GB for two and so on): " TMPFS_SIZE
@@ -453,7 +460,7 @@ script_install() {
 	ExecStop=/usr/bin/rsync -av --info=progress2 $TMPFS_DIR/ $SRV_DIR
 	TimeoutStartSec=infinity
 	TimeoutStopSec=300
-	Restart=no
+/home/$USER/.config/systemd/user/$SERVICE_NAME.service	Restart=no
 	
 	[Install]
 	WantedBy=default.target
@@ -734,8 +741,14 @@ script_install() {
 	echo '	rm /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	chmod +x /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	if [[ "$(systemctl --user show -p ActiveState --value '"$SERVICE"')" == "active" ]]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '		sed -i '\''s/SCRIPT_ENABLED="0"/SCRIPT_ENABLED="1"/'\' "$SCRIPT_DIR/$SCRIPT_NAME" >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	fi' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo ''  >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	INSTALLED=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	AVAILABLE=$(cat /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	if [ "$AVAILABLE" -eq "$INSTALLED" ]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update complete." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	else' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
@@ -749,9 +762,10 @@ script_install() {
 	
 	chmod +x /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	
-	touch $SCRIPT_DIR/$SERVICE_NAME-steam.txt
-	echo 'username='"$STEAMCMDUID" > $SCRIPT_DIR/$SERVICE_NAME-steam.txt
-	echo 'password='"$STEAMCMDPSW" >> $SCRIPT_DIR/$SERVICE_NAME-steam.txt
+	touch $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'username='"$STEAMCMDUID" > $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'password='"$STEAMCMDPSW" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'tmpfs_enable='"$TMPFS_ENABLE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
 	sudo chown -R $USER:users /home/$USER/{backups,logs,scripts,server,updates}
 	
@@ -813,7 +827,7 @@ case "$1" in
 		echo -e "${CYAN}Time: $(date +"%Y-%m-%d %H:%M:%S") ${NC}"
 		echo -e "${CYAN}$NAME server script by 7thCore${NC}"
 		echo ""
-		echo -e "${LIGHTRED}Before doing anything edit the script and input your steam username and password for the auto update feature to work.${NC}"
+		echo -e "${LIGHTRED}The script will ask you for your steam username and password and will store it in a configuration file for automatic updates.${NC}"
 		echo -e "${LIGHTRED}The variables for it are located at the very top of the script.${NC}"
 		echo -e "${LIGHTRED}Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the${NC}"
 		echo -e "${LIGHTRED}two factor authentication code and breaks the auto update feature. Use Steam Guard via email.${NC}"
