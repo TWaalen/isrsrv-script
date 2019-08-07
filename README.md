@@ -67,5 +67,3 @@ That should be it.
 
 **Known issues are:**
 -If typing uppercase letters and symbols in the server console the server crashes. To avoid crashes use lowercase letters and use ID codes for user specific commands.
-
--if for some reason systemd reports the service failed when it stops, don't worry about it, the IsR server session shuts down gracefully.
