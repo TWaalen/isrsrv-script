@@ -41,7 +41,7 @@ Bash script for running Interstellar Rift on a linux server
 
 Log in to your server with ssh and execute:
 
-git clone https://github.com/7thCore/hlnsrv-script
+git clone https://github.com/7thCore/isrsrv-script
 
 Before doing anything edit the script and input your steam username and password for the auto update feature to work. The variables for it are located at the very top of the script. Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the two factor authentication code and breaks the auto update feature. Use Steam Guard via email.
 
