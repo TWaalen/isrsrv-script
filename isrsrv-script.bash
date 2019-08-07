@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908071525"
+VERSION="201908071544"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -611,6 +611,7 @@ script_install() {
 	echo "Creating folder structure for server..."
 	mkdir -p /home/$USER/{backups,logs,scripts,server,updates}
 	cp "$(readlink -f $0)" $SCRIPT_DIR
+	chmod +x $SCRIPT_DIR/$SCRIPT_NAME
 	
 	echo "Installing screen configuration for server console and logs"
 	cat > $SCRIPT_DIR/$SERVICE_NAME-screen.conf <<- EOF
@@ -728,8 +729,9 @@ script_install() {
 	echo 'if [ "$AVAILABLE" -gt "$INSTALLED" ]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update detected." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Installed:$INSTALLED, available:$AVAILABLE" | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-	echo '	rm /home/kacm/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-	echo '	cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/kacm/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	rm /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	chmod +x /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	INSTALLED=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	AVAILABLE=$(cat /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	if [ "$AVAILABLE" -eq "$INSTALLED" ]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
@@ -742,6 +744,8 @@ script_install() {
 	echo 'fi' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo 'rm -rf /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	
+	chmod +x /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	
 	touch $SCRIPT_DIR/$SERVICE_NAME-steam.txt
 	echo 'username='"$STEAMCMDUID" > $SCRIPT_DIR/$SERVICE_NAME-steam.txt
