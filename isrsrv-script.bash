@@ -32,7 +32,7 @@ APPID="363360" #app id of the steam game
 #Wine configuration
 WINE_ARCH="win32" #Architecture of the wine prefix
 WINE_PREFIX_GAME_DIR="drive_c/Games/InterstellarRift" #Server executable directory
-WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline -linux" #Server executable
+WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline -linux -nossl" #Server executable
 
 #Ramdisk configuration
 TMPFS_ENABLE="1" #Set this to 1 if you want to run the server on a ramdisk
