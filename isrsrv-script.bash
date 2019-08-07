@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908072233"
+VERSION="201908080040"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -742,7 +742,9 @@ script_install() {
 	echo '	cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	chmod +x /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-	echo '	if [[ "$(systemctl --user show -p ActiveState --value '"$SERVICE"')" == "active" ]]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	if [[ "$(systemctl --user show -p ActiveState --value '"$SERVICE_NAME.service"')" == "active" ]]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '		sed -i '\''s/SCRIPT_ENABLED="0"/SCRIPT_ENABLED="1"/'\' "$SCRIPT_DIR/$SCRIPT_NAME" >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	echo '	elif [[ "$(systemctl --user show -p ActiveState --value '"$SERVICE_NAME-tmpfs.service"')" == "active" ]]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '		sed -i '\''s/SCRIPT_ENABLED="0"/SCRIPT_ENABLED="1"/'\' "$SCRIPT_DIR/$SCRIPT_NAME" >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo '	fi' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	echo ''  >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
