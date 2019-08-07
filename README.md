@@ -43,15 +43,9 @@ Log in to your server with ssh and execute:
 
 git clone https://github.com/7thCore/isrsrv-script
 
-Before doing anything edit the script and input your steam username and password for the auto update feature to work. The variables for it are located at the very top of the script. Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the two factor authentication code and breaks the auto update feature. Use Steam Guard via email.
+The script will ask you for your steam username and password and will store it in a configuration file for automatic updates. Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the two factor authentication code and breaks the auto update feature. Use Steam Guard via email.
 
-Also if you plan to use a ramdisk change the variable:
-
-TMPFS_ENABLE="0"
-
-to
-
-TMPFS_ENABLE="1"
+If you plan on using a ramdisk to run your server from, the script will give you that option.
 
 Sometime between the insallation process you will be prompted for steam's two factor authentication code and after that steamcmd will not ask you for another code once it runs if you are using steam guard via email.
 
