@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908071548"
+VERSION="201908071551"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -370,6 +370,8 @@ script_install() {
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service - Executes scheduled script functions: autorestart, save, sync, backup and update."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.service - Executes scheduled script functions: autorestart, save, sync and update."
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service - Executes scheduled update checks for this script"
 	echo ""
 	read -p "Press any key to continue" -n 1 -s -r
 	echo ""
