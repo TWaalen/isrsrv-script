@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908080049"
+VERSION="201908081145"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -34,8 +34,8 @@ WINE_PREFIX_GAME_DIR="drive_c/Games/InterstellarRift" #Server executable directo
 WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline -linux -nossl" #Server executable
 
 #Ramdisk configuration
-TMPFS_ENABLE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep tmpfs_enable | cut -d = -f2) #Set this to 1 if you want to run the server on a ramdisk
-TMPFS_DIR="/mnt/tmpfs/$USER" #Locaton of your ramdisk. Note: you have to configure the ramdisk in /etc/fstab before using this.
+TMPFS_ENABLE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep tmpfs_enable | cut -d = -f2) #Get configuration for tmpfs
+TMPFS_DIR="/mnt/tmpfs/$USER" #Locaton of your tmpfs partition.
 
 #TmpFs/hdd variables
 if [[ "$TMPFS_ENABLE" == "1" ]]; then
@@ -831,7 +831,6 @@ case "$1" in
 		echo -e "${CYAN}$NAME server script by 7thCore${NC}"
 		echo ""
 		echo -e "${LIGHTRED}The script will ask you for your steam username and password and will store it in a configuration file for automatic updates.${NC}"
-		echo -e "${LIGHTRED}The variables for it are located at the very top of the script.${NC}"
 		echo -e "${LIGHTRED}Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the${NC}"
 		echo -e "${LIGHTRED}two factor authentication code and breaks the auto update feature. Use Steam Guard via email.${NC}"
 		echo ""
