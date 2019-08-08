@@ -69,4 +69,9 @@ After that paste in you SSK.txt and then reboot the server. After that the game 
 That should be it.
 
 **Known issues are:**
+
 -If typing uppercase letters and symbols in the server console the server crashes. To avoid crashes use lowercase letters and use ID codes for user specific commands.
+
+-If for some reason systemd reports the service failed when it stops, don't worry about it, the server session shuts down gracefully.
+
+-Sometimes the game dosen't give permitions to hte players correctly. Example on a creative server sometimes players cant use /givresall
