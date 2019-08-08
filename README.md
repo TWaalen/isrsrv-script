@@ -43,6 +43,10 @@ Log in to your server with ssh and execute:
 
 git clone https://github.com/7thCore/isrsrv-script
 
+Make it executable:
+
+chmod +x ./isrsrv-script.bash
+
 The script will ask you for your steam username and password and will store it in a configuration file for automatic updates. Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the two factor authentication code and breaks the auto update feature. Use Steam Guard via email.
 
 If you plan on using a ramdisk to run your server from, the script will give you that option.
@@ -51,9 +55,14 @@ Sometime between the insallation process you will be prompted for steam's two fa
 
 Now for the installation.
 
-First use the -install argument (run only this command as root) and follow the instructions.
+Run the script with root permitions like so (necessary for user creation):
 
-Set "AutoSaveDelay" and "BackupSaveDelay" in server.json to 0 to disable the integrated saves and backups. The script will take care of saving and backups. This is required is using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
+sudo ./isrsrv-script.bash -install
+
+The script will create a new non-sudo enabled user from wich the game server will run. If you want to have multiple game servers on the same machin just run the script multiple times but with a diffrent username inputted to the script.
+
+
+Set "AutoSaveDelay" and "BackupSaveDelay" in server.json to 0 to disable the integrated saves and backups. The script will take care of saving and backups. This is required if using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
 
 After that paste in you SSK.txt and then reboot the server. After that the game should start on boot.
 
