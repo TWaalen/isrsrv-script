@@ -74,4 +74,4 @@ That should be it.
 
 -If for some reason systemd reports the service failed when it stops, don't worry about it, the server session shuts down gracefully.
 
--Sometimes the game dosen't give permitions to hte players correctly. Example on a creative server sometimes players cant use /givresall
+-Sometimes the game dosen't give permitions to hte players correctly. Example on a creative server sometimes players can't use /givresall
