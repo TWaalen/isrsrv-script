@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-VERSION="201908081850"
+export VERSION="201908092013"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -75,12 +75,12 @@ script_logs() {
 	if [ ! -d "$LOG_DIR" ]; then
 		mkdir -p $LOG_DIR
 	fi
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old logs) Deleting old logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old logs) Deleting old logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	# Delete old logs
 	find $LOG_DIR -mtime $LOG_DELOLD -exec rm {} \;
 	# Delete empty folders
 	find $LOG_DIR -type d 2> /dev/null -empty -exec rm -rf {} \;
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$NAME] [INFO] (Delete old logs) Deleting old logs complete." | tee -a "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old logs) Deleting old logs complete." | tee -a "$LOG_SCRIPT"
 }
 
 #Prints out if the server is running
