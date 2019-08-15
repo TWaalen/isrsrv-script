@@ -23,9 +23,11 @@ SCRIPT_NAME="$SERVICE_NAME-script.bash" #Script name
 SCRIPT_DIR="/home/$USER/scripts" #Location of this script
 UPDATE_DIR="/home/$USER/updates" #Location of update information for the script's automatic update feature
 
-#Steamcmd login
+#Steamcmd
 STEAMCMDUID=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep username | cut -d = -f2) #Your steam username
 STEAMCMDPSW=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep password | cut -d = -f2) #Your steam password
+BETA_BRANCH_ENABLED=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_enabled | cut -d = -f2) #Beta branch enabled?
+BETA_BRANCH_NAME=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_name | cut -d = -f2) #Beta branch name
 APPID="363360" #app id of the steam game
 
 #Wine configuration
@@ -259,10 +261,15 @@ script_autobackup() {
 #Check for updates. If there are updates available, shut down the server, update it and restart it.
 script_update() {
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Initializing update check." | tee -a "$LOG_SCRIPT"
+	if [[ "$BETA_BRANCH_ENABLED" == "1" ]]; then
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Beta branch enabled. Branch name: $BETA_BRANCH_NAME" | tee -a "$LOG_SCRIPT"
+	fi
+	
 	if [ ! -f $UPDATE_DIR/installed.buildid ] ; then
 		touch $UPDATE_DIR/installed.buildid
 		echo "0" > $UPDATE_DIR/installed.buildid
 	fi
+	
 	if [ ! -f $UPDATE_DIR/installed.timeupdated ] ; then
 		touch $UPDATE_DIR/installed.timeupdated
 		echo "0" > $UPDATE_DIR/installed.timeupdated
@@ -273,9 +280,13 @@ script_update() {
 	
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Connecting to steam servers." | tee -a "$LOG_SCRIPT"
 	
-	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.buildid
-	
-	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.timeupdated
+	if [[ "$BETA_BRANCH_ENABLED" == "0" ]]; then
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.buildid
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.timeupdated
+	elif [[ "$BETA_BRANCH_ENABLED" == "1" ]]; then
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"$BETA_BRANCH_NAME\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.buildid
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"$BETA_BRANCH_NAME\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.timeupdated
+	fi
 	
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Received application info data." | tee -a "$LOG_SCRIPT"
 	
@@ -288,20 +299,32 @@ script_update() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) New update detected." | tee -a "$LOG_SCRIPT"
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Installed: BuildID: $INSTALLED_BUILDID, TimeUpdated: $INSTALLED_TIME" | tee -a "$LOG_SCRIPT"
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Available: BuildID: $AVAILABLE_BUILDID, TimeUpdated: $AVAILABLE_TIME" | tee -a "$LOG_SCRIPT"
+		
 		sleep 1
+		
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 			WAS_ACTIVE="1"
 			script_stop
 		fi
+		
 		sleep 1
+		
 		if [[ "$TMPFS_ENABLE" == "1" ]]; then
 			rm -rf $TMPFS_DIR/$WINE_PREFIX_GAME_DIR
 		fi
+		
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Updating..." | tee -a "$LOG_SCRIPT"
-		steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID validate +quit
+		
+		if [[ "$BETA_BRANCH_ENABLED" == "0" ]]; then
+			steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID validate +quit
+		elif [[ "$BETA_BRANCH_ENABLED" == "1" ]]; then
+			steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID -beta $BETA_BRANCH_NAME validate +quit
+		fi
+		
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Update completed." | tee -a "$LOG_SCRIPT"
 		echo "$AVAILABLE_BUILDID" > $UPDATE_DIR/installed.buildid
 		echo "$AVAILABLE_TIME" > $UPDATE_DIR/installed.timeupdated
+		
 		if [ "$WAS_ACTIVE" == "1" ]; then
 			if [[ "$TMPFS_ENABLE" == "1" ]]; then
 				mkdir -p $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/Build
@@ -405,6 +428,20 @@ script_install() {
 			tmpfs				   /mnt/tmpfs		tmpfs		   rw,size=$TMPFS_SIZE,gid=users,mode=0777	0 0
 			EOF
 		fi
+	fi
+	
+	echo ""
+	read -p "Enable beta branch? Used for experimental and legacy versions. (y/n): " SET_BETA_BRANCH_STATE
+	echo ""
+	
+	if [[ "SET_BETA_BRANCH_STATE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		BETA_BRANCH_ENABLED="1"
+		echo "Look up beta branch names at https://steamdb.info/app/363360/depots/"
+		echo "Name example: ir_0.2.8"
+		read -p "Enter beta branch name: " BETA_BRANCH_NAME
+	elif [[ "SET_BETA_BRANCH_STATE" =~ ^([nN][oO]|[nN])$ ]]; then
+		BETA_BRANCH_ENABLED="0"
+		BETA_BRANCH_NAME="none"
 	fi
 	
 	echo "Enabling linger"
@@ -561,29 +598,6 @@ script_install() {
 	Description=$NAME Script Timer 3
 	
 	[Timer]
-	OnCalendar=*-*-* *:10:00
-	OnCalendar=*-*-* *:25:00
-	OnCalendar=*-*-* *:40:00
-	OnCalendar=*-*-* 00:55:00
-	OnCalendar=*-*-* 01:55:00
-	OnCalendar=*-*-* 02:55:00
-	OnCalendar=*-*-* 03:55:00
-	OnCalendar=*-*-* 04:55:00
-	OnCalendar=*-*-* 05:55:00
-	OnCalendar=*-*-* 07:55:00
-	OnCalendar=*-*-* 08:55:00
-	OnCalendar=*-*-* 09:55:00
-	OnCalendar=*-*-* 10:55:00
-	OnCalendar=*-*-* 11:55:00
-	OnCalendar=*-*-* 13:55:00
-	OnCalendar=*-*-* 14:55:00
-	OnCalendar=*-*-* 15:55:00
-	OnCalendar=*-*-* 16:55:00
-	OnCalendar=*-*-* 17:55:00
-	OnCalendar=*-*-* 19:55:00
-	OnCalendar=*-*-* 20:55:00
-	OnCalendar=*-*-* 21:55:00
-	OnCalendar=*-*-* 22:55:00
 	OnCalendar=*-*-* 23:55:00
 	Persistent=true
 	
@@ -769,6 +783,8 @@ script_install() {
 	echo 'username='"$STEAMCMDUID" > $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'password='"$STEAMCMDPSW" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'tmpfs_enable='"$TMPFS_ENABLE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'beta_branch_enabled='"$BETA_BRANCH_ENABLED" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'beta_branch_name='"$BETA_BRANCH_NAME" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
 	sudo chown -R $USER:users /home/$USER/{backups,logs,scripts,server,updates}
 	
@@ -795,15 +811,27 @@ script_install() {
 	
 	echo "Installing game..."
 	
-	su - $USER <<- EOF
-	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.buildid
-	EOF
+	if [[ "$BETA_BRANCH_ENABLED" == "0" ]]; then
+		su - $USER <<- EOF
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.buildid
+		EOF
 	
-	su - $USER <<- EOF
-	steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.timeupdated
-	EOF
+		su - $USER <<- EOF
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.timeupdated
+		EOF
+		
+		su - $USER -c "steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID validate +quit"
+	elif [[ "$BETA_BRANCH_ENABLED" == "1" ]]; then
+		su - $USER <<- EOF
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"$BETA_BRANCH_NAME\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.buildid
+		EOF
 	
-	su - $USER -c "steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID validate +quit"
+		su - $USER <<- EOF
+		steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"$BETA_BRANCH_NAME\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/installed.timeupdated
+		EOF
+		
+		su - $USER -c "steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID -beta $BETA_BRANCH_NAME validate +quit"
+	fi
 	
 	mkdir -p $BCKP_SRC_DIR
 	chown -R $USER:users $BCKP_SRC_DIR
@@ -815,7 +843,7 @@ script_install() {
 	echo "After you copied your SSK.txt reboot the server and the game server will start on boot."
 	echo "You can login to your the $USER account with <sudo -i -u $USER> from your primary account or root account."
 	echo "The script was automaticly copied to the scripts folder located at $SCRIPT_DIR"
-	echo "For any settings you'll want to change, edit that file."
+	echo "For any settings you'll want to change, edit the $SCRIPT_DIR/$SERVICE_NAME-config.conf file."
 	echo ""
 }
 
