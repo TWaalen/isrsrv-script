@@ -143,11 +143,11 @@ script_ssk_check_email() {
 		SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
 		if [[ "$EMAIL_SSK" == "1" ]]; then
 			if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
-				mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+				mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
 				Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
 				EOF
 			elif [[ "$SSK_DAYS" == "30" ]]; then
-				mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+				mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
 				Your SSK.txt is $SSK_DAYS days old and may have already expired. Please consider updating it.
 				No further email notifications for the SSK.txt will be sent until it is updated.
 				EOF
@@ -258,7 +258,7 @@ script_autorestart() {
 		script_start
 		sleep 1
 		if [[ "$EMAIL_CRASH" == "1" ]]; then
-			mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
+			mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
 			The script detected the server not running or the service has failed and will attempt to restart it. Please check the server and/or service logs for more information.
 			EOF
 		fi
@@ -466,7 +466,7 @@ script_update() {
 		fi
 		
 		if [[ "$EMAIL_UPDATE" == "1" ]]; then
-			mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: Update" $EMAIL_RECIPIENT <<- EOF
+			mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: Update" $EMAIL_RECIPIENT <<- EOF
 			Server was updated. Please check the update notes if there are any additional steps to take.
 			EOF
 		fi
