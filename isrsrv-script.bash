@@ -34,6 +34,7 @@ APPID="363360" #app id of the steam game
 WINE_ARCH="win32" #Architecture of the wine prefix
 WINE_PREFIX_GAME_DIR="drive_c/Games/InterstellarRift" #Server executable directory
 WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline -linux -nossl" #Server executable
+WINE_PREFIX_GAME_CONFIG="drive_c/users/$USER/Application Data/InterstellarRift/"
 
 #Ramdisk configuration
 TMPFS_ENABLE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep tmpfs_enable | cut -d = -f2) #Get configuration for tmpfs
@@ -53,6 +54,15 @@ BCKP_SRC="*" #What files to backup, * for all
 BCKP_DIR="/home/$USER/backups" #Location of stored backups
 BCKP_DEST="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
 BCKP_DELOLD="+3" #Delete old backups. Ex +3 deletes 3 days old backups.
+
+#Email configuration
+EMAIL_RECIPIENT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_recipient | cut -d = -f2) #Send emails to this address
+EMAIL_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_ssk | cut -d = -f2) #Send emails for SSK.txt expiration
+EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update | cut -d = -f2) #Send emails when server updates
+EMAIL_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_crash | cut -d = -f2) #Send emails when the server crashes
+
+#SSK day counter
+SSK_DAYS=$((($(date +%s)-$(stat -c %Y $SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt))/(3600*24)))
 
 #Log configuration
 export LOG_DIR="/home/$USER/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
@@ -103,6 +113,7 @@ script_enabled() {
 	fi
 }
 
+#If the aluna crash handler is running, kill it due to it freezing
 script_crash_kill() {
 	if [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -gt "0" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe detected. Killing the process." | tee -a "$LOG_SCRIPT"
@@ -115,6 +126,31 @@ script_crash_kill() {
 	elif [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -eq "" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe not detected. Server nominal." | tee -a "$LOG_SCRIPT"
 	fi
+}
+
+#Check how old is the SSK.txt file and write to the script log if it's near expiration
+script_ssk_check() {
+if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]] ||; then
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old. Consider updating it." | tee -a "$LOG_SCRIPT"
+elif [[ "$SSK_DAYS" == "30" ]]; then
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old and may have expired. Consider updating it. No further notifications will be displayed untill it is updated." | tee -a "$LOG_SCRIPT"
+fi
+}
+
+#Check how old is the SSK.txt file and send an email if it's near expiration
+script_ssk_check_email() {
+if [[ "$EMAIL_SSK" == "1" ]]; then
+	if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]] ||; then
+		mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+		Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
+		EOF
+	elif [[ "$SSK_DAYS" == "30" ]]; then
+		mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+		Your SSK.txt is $SSK_DAYS days old and may have already expired. Please consider updating it.
+		No further email notifications for the SSK.txt will be sent until it is updated.
+		EOF
+	fi
+fi
 }
 
 #Issue the save command to the server
@@ -218,6 +254,11 @@ script_autorestart() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autorestart) Server not running, attempting to start." | tee -a "$LOG_SCRIPT"
 		script_start
 		sleep 1
+		if [[ "$EMAIL_CRASH" == "1" ]]; then
+			mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
+			The script detected the server not running or the service has failed and will attempt to restart it. Please check the server and/or service logs for more information.
+			EOF
+		fi
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autorestart) Server running, no need to restart." | tee -a "$LOG_SCRIPT"
 	fi
@@ -255,6 +296,90 @@ script_autobackup() {
 		script_backup
 		sleep 1
 		script_deloldbackup
+	fi
+}
+
+script_delete_save() {
+	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) WARNING! This will delete the server's save game." | tee -a "$LOG_SCRIPT"
+		read -p "Are you sure you want to delete the server's save game? (y/n): " DELETE_SERVER_SAVE
+		if [[ "$DELETE_SERVER_SAVE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+			read -p "Do you also want to delete the server.json and SSK.txt? (y/n): " DELETE_SERVER_SSKJSON
+			if [[ "$DELETE_SERVER_SSKJSON" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				if [[ "$TMPFS_ENABLE" == "1" ]]; then
+					rm -rf $TMPFS_DIR
+				fi
+				rm -rf $SRV_DIR/$WINE_PREFIX_GAME_CONFIG/*
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Deletion of save files, server.json and SSK.txt complete." | tee -a "$LOG_SCRIPT"
+			elif [[ "$DELETE_SERVER_SSKJSON" =~ ^([nN][oO]|[nN])$ ]]; then
+				if [[ "$TMPFS_ENABLE" == "1" ]]; then
+					rm -rf $TMPFS_DIR
+				fi
+				cd $SRV_DIR/$WINE_PREFIX_GAME_CONFIG
+				rm -rf $(ls | grep -v server.json | grep -v SSK.txt)
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Deletion of save files complete. SSK and server.json are untouched." | tee -a "$LOG_SCRIPT"
+			fi
+		elif [[ "$DELETE_SERVER_SAVE" =~ ^([nN][oO]|[nN])$ ]]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Save deletion canceled." | tee -a "$LOG_SCRIPT"
+		fi
+	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Clear save) The server is running. Aborting..." | tee -a "$LOG_SCRIPT"
+	fi
+}
+
+script_change_branch() {
+	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Change branch) Server branch change initiated. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
+		read -p "Are you sure you want to change the server branch? (y/n): " CHANGE_SERVER_BRANCH
+		if [[ "$CHANGE_SERVER_BRANCH" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+			if [[ "$TMPFS_ENABLE" == "1" ]]; then
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Change branch) Clearing TmpFs directory and game installation." | tee -a "$LOG_SCRIPT"
+				rm -rf $TMPFS_DIR
+				rm -rf $SRV_DIR/$WINE_PREFIX_GAME_DIR/*
+			elif [[ "$TMPFS_ENABLE" == "0" ]]; then
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Change branch) Clearing game installation." | tee -a "$LOG_SCRIPT"
+				rm -rf $SRV_DIR/$WINE_PREFIX_GAME_DIR/*
+			fi
+			if [[ "$BETA_BRANCH_ENABLED" == "1" ]]; then
+				PUBLIC_BRANCH="0"
+			elif [[ "$BETA_BRANCH_ENABLED" == "0" ]]; then
+				PUBLIC_BRANCH="1"
+			fi
+			echo "Current configuration:"
+			echo 'Public branch: '"$PUBLIC_BRANCH"
+			echo 'Beta branch enabled: '"$BETA_BRANCH_ENABLED"
+			echo 'Beta branch name: '"$BETA_BRANCH_NAME"
+			echo ""
+			read -p "Public branch or beta branch? (public/beta): " SET_BRANCH_STATE
+			echo ""
+			if [[ "$SET_BRANCH_STATE" =~ ^([bB][eE][tT][aA]|[bB])$ ]]; then
+				BETA_BRANCH_ENABLED="1"
+				echo "Look up beta branch names at https://steamdb.info/app/363360/depots/"
+				echo "Name example: ir_0.2.8"
+				read -p "Enter beta branch name: " BETA_BRANCH_NAME
+			elif [[ "$SET_BRANCH_STATE" =~ ^([pP][uU][bB][lL][iI][cC]|[pP])$ ]]; then
+				BETA_BRANCH_ENABLED="0"
+				BETA_BRANCH_NAME="none"
+			fi
+			sed -i '/beta_branch_enabled/d' $SCRIPT_DIR/$SERVICE_NAME-config.conf
+			sed -i '/beta_branch_enabled/d' $SCRIPT_DIR/$SERVICE_NAME-config.conf
+			echo 'beta_branch_enabled='"$BETA_BRANCH_ENABLED" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+			echo 'beta_branch_name='"$BETA_BRANCH_NAME" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+			if [[ "$BETA_BRANCH_ENABLED" == "0" ]]; then
+				steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.buildid
+				steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"public\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.timeupdated
+				steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID -beta validate +quit
+			elif [[ "$BETA_BRANCH_ENABLED" == "1" ]]; then
+				steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"$BETA_BRANCH_NAME\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"buildid\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.buildid
+				steamcmd +login $STEAMCMDUID $STEAMCMDPSW +app_info_update 1 +app_info_print $APPID +quit | grep -EA 1000 "^\s+\"branches\"$" | grep -EA 5 "^\s+\"$BETA_BRANCH_NAME\"$" | grep -m 1 -EB 10 "^\s+}$" | grep -E "^\s+\"timeupdated\"\s+" | tr '[:blank:]"' ' ' | tr -s ' ' | cut -d' ' -f3 > $UPDATE_DIR/available.timeupdated
+				steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID -beta $BETA_BRANCH_NAME validate +quit
+			fi
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Change branch) Server branch change complete." | tee -a "$LOG_SCRIPT"
+		elif [[ "$CHANGE_SERVER_BRANCH" =~ ^([nN][oO]|[nN])$ ]]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Change branch) Server branch change canceled." | tee -a "$LOG_SCRIPT"
+		fi
+	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Change branch) The server is running. Aborting..." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
@@ -336,6 +461,13 @@ script_update() {
 			SCRIPT_ENABLED="1"
 			script_start
 		fi
+		
+		if [[ "$EMAIL_UPDATE" == "1" ]]; then
+			mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: Update" $EMAIL_RECIPIENT <<- EOF
+			Server was updated. Please check the update notes if there are any additional steps to take.
+			EOF
+		fi
+		
 	elif [ "$AVAILABLE_TIME" -eq "$INSTALLED_TIME" ]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) No new updates detected." | tee -a "$LOG_SCRIPT"
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Update) Installed: BuildID: $INSTALLED_BUILDID, TimeUpdated: $INSTALLED_TIME" | tee -a "$LOG_SCRIPT"
@@ -346,6 +478,7 @@ script_update() {
 script_timer_one() {
 	script_enabled
 	script_logs
+	script_ssk_check
 	script_crash_kill
 	script_autorestart
 	script_save
@@ -358,6 +491,7 @@ script_timer_one() {
 script_timer_two() {
 	script_enabled
 	script_logs
+	script_ssk_check
 	script_crash_kill
 	script_autorestart
 	script_save
@@ -434,14 +568,67 @@ script_install() {
 	read -p "Enable beta branch? Used for experimental and legacy versions. (y/n): " SET_BETA_BRANCH_STATE
 	echo ""
 	
-	if [[ "SET_BETA_BRANCH_STATE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+	if [[ "$SET_BETA_BRANCH_STATE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		BETA_BRANCH_ENABLED="1"
 		echo "Look up beta branch names at https://steamdb.info/app/363360/depots/"
 		echo "Name example: ir_0.2.8"
 		read -p "Enter beta branch name: " BETA_BRANCH_NAME
-	elif [[ "SET_BETA_BRANCH_STATE" =~ ^([nN][oO]|[nN])$ ]]; then
+	elif [[ "$SET_BETA_BRANCH_STATE" =~ ^([nN][oO]|[nN])$ ]]; then
 		BETA_BRANCH_ENABLED="0"
 		BETA_BRANCH_NAME="none"
+	fi
+	
+	echo ""
+	read -p "Enable email notifications (y/n): " POSTFIX_ENABLE
+	if [[ "$POSTFIX_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		echo ""
+		read -p "Enter the relay host (example: smtp.gmail.com): " POSTFIX_RELAY_HOST
+		echo ""
+		read -p "Enter the relay host port (example: 587): " POSTFIX_RELAY_HOST_PORT
+		echo ""
+		read -p "Enter your email address for the server (example: example@gmail.com): " POSTFIX_SENDER
+		echo ""
+		read -p "Enter your password for $POSTFIX_SENDER : " POSTFIX_SENDER_PSW
+		echo ""
+		read -p "Enter the email that will recieve the notifications (example: example2@gmail.com): " POSTFIX_RECIPIENT
+		echo ""
+		read -p "Email notifications for SSK.txt expiration? (y/n): " POSTFIX_SSK_ENABLE
+			if [[ "$POSTFIX_SSK_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				POSTFIX_SSK="1"
+			fi
+		echo ""
+		read -p "Email notifications for game updates? (y/n): " POSTFIX_UPDATE_ENABLE
+			if [[ "$POSTFIX_UPDATE_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				POSTFIX_UPDATE="1"
+			fi
+		echo ""
+		read -p "Email notifications for crashes? (y/n): " POSTFIX_CRASH_ENABLE
+			if [[ "$POSTFIX_CRASH_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+				POSTFIX_CRASH="1"
+			fi
+		cat >> /etc/postfix/main.cf <<- EOF
+		relayhost = [$POSTFIX_RELAY_HOST]:$POSTFIX_RELAY_HOST_PORT
+		smtp_sasl_auth_enable = yes
+		smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+		smtp_sasl_security_options = noanonymous
+		smtp_tls_CApath = /etc/ssl/certs
+		smtpd_tls_CApath = /etc/ssl/certs
+		smtp_use_tls = yes
+		EOF
+
+		cat > /etc/postfix/sasl_passwd <<- EOF
+		[$POSTFIX_RELAY_HOST]:$POSTFIX_RELAY_HOST_PORT    $POSTFIX_SENDER:$POSTFIX_SENDER_PSW
+		EOF
+	
+		sudo chmod 400 /etc/postfix/sasl_passwd
+		sudo postmap /etc/postfix/sasl_passwd
+		sudo systemctl enable postfix
+	elif [[ "$POSTFIX_ENABLE" =~ ^([nN][oO]|[nN])$ ]]; then
+		POSTFIX_SENDER="none"
+		POSTFIX_RECIPIENT="none"
+		POSTFIX_SSK="0"
+		POSTFIX_UPDATE="0"
+		POSTFIX_CRASH="0"
 	fi
 	
 	echo "Enabling linger"
@@ -593,12 +780,14 @@ script_install() {
 	ExecStart=$SCRIPT_DIR/$SCRIPT_NAME -timer_two
 	EOF
 	
+	
+	
 	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer <<- EOF
 	[Unit]
 	Description=$NAME Script Timer 3
 	
 	[Timer]
-	OnCalendar=*-*-* 23:55:00
+	OnCalendar=*-*-* 06:55:00
 	Persistent=true
 	
 	[Install]
@@ -608,6 +797,28 @@ script_install() {
 	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service <<- EOF
 	[Unit]
 	Description=$NAME Script Timer 3 Service
+	
+	[Service]
+	Type=oneshot
+	ExecStart=$SCRIPT_DIR/$SERVICE_NAME-script.bash -ssk_check_email
+	EOF
+	
+	
+	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.timer <<- EOF
+	[Unit]
+	Description=$NAME Script Timer 4
+	
+	[Timer]
+	OnCalendar=*-*-* 23:55:00
+	Persistent=true
+	
+	[Install]
+	WantedBy=timers.target
+	EOF
+	
+	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.service <<- EOF
+	[Unit]
+	Description=$NAME Script Timer 4 Service
 	
 	[Service]
 	Type=oneshot
@@ -623,6 +834,7 @@ script_install() {
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-1.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-2.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-3.timer"
+	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-4.timer"
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		su - $USER -c "systemctl --user enable $SERVICE_NAME-mkdir-tmpfs.service"
@@ -785,6 +997,11 @@ script_install() {
 	echo 'tmpfs_enable='"$TMPFS_ENABLE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'beta_branch_enabled='"$BETA_BRANCH_ENABLED" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'beta_branch_name='"$BETA_BRANCH_NAME" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'email_sender='"$POSTFIX_SENDER" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'email_recipient='"$POSTFIX_RECIPIENT" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'email_ssk='"$POSTFIX_SSK" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'email_update='"$POSTFIX_UPDATE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'email_crash='"$POSTFIX_CRASH" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
 	sudo chown -R $USER:users /home/$USER/{backups,logs,scripts,server,updates}
 	
@@ -872,6 +1089,10 @@ case "$1" in
 		echo -e "${GREEN}backup ${RED}- ${GREEN}Backup files, if server running or not.${NC}"
 		echo -e "${GREEN}autobackup ${RED}- ${GREEN}Automaticly backup files when server running${NC}"
 		echo -e "${GREEN}deloldbackup ${RED}- ${GREEN}Delete old backups${NC}"
+		echo -e "${GREEN}delete_save ${RED}- ${GREEN}Delete the server's save game with the option for deleting/keeping the server.json and SSK.txt files.${NC}"
+		echo -e "${GREEN}change_branch ${RED}- ${GREEN}Changes the game branch in use by the server (public,experimental,legacy and so on).${NC}"
+		echo -e "${GREEN}ssk_check ${RED}- ${GREEN}Checks the SSK's creation/modification date and displays a warning if nearing expiration.${NC}"
+		echo -e "${GREEN}ssk_check_mail ${RED}- ${GREEN}Checks the SSK's creation/modification date and sends out and if nearing expiration and if the email setting is enabled.${NC}"
 		echo -e "${GREEN}update ${RED}- ${GREEN}Update the server, if the server is running it wil save it, shut it down, update it and restart it.${NC}"
 		echo -e "${GREEN}status ${RED}- ${GREEN}Display status of server${NC}"
 		echo -e "${GREEN}install ${RED}- ${GREEN}Installs all the needed files for the script to run, the wine prefix and the game.${NC}"
@@ -922,6 +1143,18 @@ case "$1" in
 		;;
 	-install)
 		script_install
+		;;
+	-delete_save)
+		script_delete_save
+		;;
+	-change_branch)
+		script_change_branch
+		;;
+	-ssk_check)
+		script_ssk_check
+		;;
+	-ssk_check_email)
+		script_ssk_check_email
 		;;
 	-crash_kill)
 		script_crash_kill
