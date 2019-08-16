@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-export VERSION="201908161334"
+export VERSION="201908161340"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -62,7 +62,7 @@ EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update | c
 EMAIL_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_crash | cut -d = -f2) #Send emails when the server crashes
 
 #SSK day counter
-SSK_DAYS=$((($(date +%s)-$(stat -c %Y $SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt))/(3600*24)))
+SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
 
 #Log configuration
 export LOG_DIR="/home/$USER/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
@@ -130,7 +130,7 @@ script_crash_kill() {
 
 #Check how old is the SSK.txt file and write to the script log if it's near expiration
 script_ssk_check() {
-if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]] ||; then
+if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old. Consider updating it." | tee -a "$LOG_SCRIPT"
 elif [[ "$SSK_DAYS" == "30" ]]; then
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old and may have expired. Consider updating it. No further notifications will be displayed untill it is updated." | tee -a "$LOG_SCRIPT"
@@ -140,7 +140,7 @@ fi
 #Check how old is the SSK.txt file and send an email if it's near expiration
 script_ssk_check_email() {
 if [[ "$EMAIL_SSK" == "1" ]]; then
-	if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]] ||; then
+	if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
 		mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
 		Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
 		EOF
