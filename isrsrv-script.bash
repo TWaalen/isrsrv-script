@@ -127,29 +127,33 @@ script_crash_kill() {
 
 #Check how old is the SSK.txt file and write to the script log if it's near expiration
 script_ssk_check() {
-SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
-if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old. Consider updating it." | tee -a "$LOG_SCRIPT"
-elif [[ "$SSK_DAYS" == "30" ]]; then
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old and may have expired. Consider updating it. No further notifications will be displayed untill it is updated." | tee -a "$LOG_SCRIPT"
-fi
+	if [ -f "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt" ] ; then
+		SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
+		if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old. Consider updating it." | tee -a "$LOG_SCRIPT"
+		elif [[ "$SSK_DAYS" == "30" ]]; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old and may have expired. Consider updating it. No further notifications will be displayed untill it is updated." | tee -a "$LOG_SCRIPT"
+		fi
+	fi
 }
 
 #Check how old is the SSK.txt file and send an email if it's near expiration
 script_ssk_check_email() {
-SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
-if [[ "$EMAIL_SSK" == "1" ]]; then
-	if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
-		mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
-		Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
-		EOF
-	elif [[ "$SSK_DAYS" == "30" ]]; then
-		mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
-		Your SSK.txt is $SSK_DAYS days old and may have already expired. Please consider updating it.
-		No further email notifications for the SSK.txt will be sent until it is updated.
-		EOF
+	if [ -f "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt" ] ; then
+		SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
+		if [[ "$EMAIL_SSK" == "1" ]]; then
+			if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
+				mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+				Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
+				EOF
+			elif [[ "$SSK_DAYS" == "30" ]]; then
+				mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+				Your SSK.txt is $SSK_DAYS days old and may have already expired. Please consider updating it.
+				No further email notifications for the SSK.txt will be sent until it is updated.
+				EOF
+			fi
+		fi
 	fi
-fi
 }
 
 #Issue the save command to the server
@@ -507,6 +511,7 @@ script_install() {
 	echo "winetricks"
 	echo "screen"
 	echo "steamcmd"
+	echo "postfix (optional/for the email feature)"
 	echo ""
 	echo "If these packages aren't installed, terminate this script with CTRL+C and install them."
 	echo "The script will ask you for your steam username and password and will store it in a configuration file for automatic updates."
@@ -525,8 +530,10 @@ script_install() {
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service - Executes scheduled script functions: autorestart, save, sync, backup and update."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.service - Executes scheduled script functions: autorestart, save, sync and update."
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service - Executes scheduled update checks for this script"
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-3.service"
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service - Executes scheduled SSK checks and sends email if configured as so."
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.service - Executes scheduled update checks for this script"
 	echo "$SCRIPT_DIR/$SERVICE_NAME-update.bash - Update script for automatic updates from github."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-config.conf - Stores steam username and password. Also stores tmpfs/ramdisk setting."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-screen.conf - Screen configuration to enable logging."
