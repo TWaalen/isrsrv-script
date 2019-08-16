@@ -785,9 +785,7 @@ script_install() {
 	Type=oneshot
 	ExecStart=$SCRIPT_DIR/$SCRIPT_NAME -timer_two
 	EOF
-	
-	
-	
+		
 	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer <<- EOF
 	[Unit]
 	Description=$NAME Script Timer 3
