@@ -59,7 +59,7 @@ The script will ask you for your steam username and password and will store it i
 
 If you plan on using a ramdisk to run your server from, the script will give you that option.
 
-Sometime between the insallation process you will be prompted for steam's two factor authentication code and after that steamcmd will not ask you for another code once it runs if you are using steam guard via email.
+Sometime between the installation process you will be prompted for steam's two factor authentication code and after that steamcmd will not ask you for another code once it runs if you are using steam guard via email.
 
 Now for the installation.
 
