@@ -13,6 +13,8 @@ Bash script for running Interstellar Rift on a linux server
 
 -steamcmd
 
+-postfix (optional for email notifications)
+
 **Features:**
 
 -auto backups
@@ -36,6 +38,12 @@ Bash script for running Interstellar Rift on a linux server
 -shutdown gracefully on os shutdown
 
 -script auto update from github
+
+-send email notifications when SSK.txt near end of life (optional)
+
+-send email notifications on crash (optional)
+
+-send email notifications when server updated (optional)
 
 **Instructions:**
 
