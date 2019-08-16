@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-export VERSION="201908161340"
+export VERSION="201908161348"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -60,9 +60,6 @@ EMAIL_RECIPIENT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_recipie
 EMAIL_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_ssk | cut -d = -f2) #Send emails for SSK.txt expiration
 EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update | cut -d = -f2) #Send emails when server updates
 EMAIL_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_crash | cut -d = -f2) #Send emails when the server crashes
-
-#SSK day counter
-SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
 
 #Log configuration
 export LOG_DIR="/home/$USER/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
@@ -130,6 +127,7 @@ script_crash_kill() {
 
 #Check how old is the SSK.txt file and write to the script log if it's near expiration
 script_ssk_check() {
+SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
 if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old. Consider updating it." | tee -a "$LOG_SCRIPT"
 elif [[ "$SSK_DAYS" == "30" ]]; then
@@ -139,6 +137,7 @@ fi
 
 #Check how old is the SSK.txt file and send an email if it's near expiration
 script_ssk_check_email() {
+SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
 if [[ "$EMAIL_SSK" == "1" ]]; then
 	if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
 		mail -r "$EMAIL_SENDER ($NAME)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
