@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-export VERSION="201908161446"
+export VERSION="201908171632"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -156,6 +156,16 @@ script_ssk_check_email() {
 	fi
 }
 
+#Systemd service sends email if email notifications for crashes enabled
+script_send_crash_email() {
+	if [[ "$EMAIL_CRASH" == "1" ]]; then
+		mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
+		The script detected the server not running or the service has failed and will attempt to restart it. Please check the server and/or service logs for more information.
+		EOF
+	fi
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Crash) Server crashed. Please review your logs." | tee -a "$LOG_SCRIPT"
+}
+
 #Issue the save command to the server
 script_save() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
@@ -248,22 +258,6 @@ script_restart() {
 		sleep 1
 		script_start
 		sleep 1
-	fi
-}
-
-#If the server proces is terminated it auto restarts it
-script_autorestart() {
-	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autorestart) Server not running, attempting to start." | tee -a "$LOG_SCRIPT"
-		script_start
-		sleep 1
-		if [[ "$EMAIL_CRASH" == "1" ]]; then
-			mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
-			The script detected the server not running or the service has failed and will attempt to restart it. Please check the server and/or service logs for more information.
-			EOF
-		fi
-	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Autorestart) Server running, no need to restart." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
@@ -675,6 +669,11 @@ script_install() {
 	[Unit]
 	Description=$NAME TmpFs Server Service 
 	After=network.target home-$USER-tmpfs.mount $SERVICE_NAME-mkdir-tmpfs.service
+	Conflicts=$SERVICE_NAME.service
+	StartLimitBurst=3
+	StartLimitIntervalSec=180
+	StartLimitAction=none
+	OnFailure=$SERVICE_NAME-send-email.service
 	
 	[Service]
 	Type=forking
@@ -689,8 +688,9 @@ script_install() {
 	ExecStop=/bin/sleep 10
 	ExecStop=/usr/bin/rsync -av --info=progress2 $TMPFS_DIR/ $SRV_DIR
 	TimeoutStartSec=infinity
-	TimeoutStopSec=300
-/home/$USER/.config/systemd/user/$SERVICE_NAME.service	Restart=no
+	TimeoutStopSec=120
+	RestartSec=10
+	Restart=on-failure
 	
 	[Install]
 	WantedBy=default.target
@@ -700,6 +700,11 @@ script_install() {
 	[Unit]
 	Description=$NAME Server Service
 	After=network.target
+	Conflicts=$SERVICE_NAME-tmpfs.service
+	StartLimitBurst=3
+	StartLimitIntervalSec=180
+	StartLimitAction=none
+	OnFailure=$SERVICE_NAME-send-email.service
 	
 	[Service]
 	Type=forking
@@ -712,8 +717,9 @@ script_install() {
 	ExecStop=env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineserver -k
 	ExecStop=/bin/sleep 10
 	TimeoutStartSec=infinity
-	TimeoutStopSec=300
-	Restart=no
+	TimeoutStopSec=120
+	RestartSec=10
+	Restart=on-failure
 	
 	[Install]
 	WantedBy=default.target
@@ -827,6 +833,15 @@ script_install() {
 	[Service]
 	Type=oneshot
 	ExecStart=$SCRIPT_DIR/$SERVICE_NAME-update.bash
+	EOF
+	
+	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service <<- EOF
+	[Unit]
+	Description=$NAME Script Send Email notification Service
+	
+	[Service]
+	Type=oneshot
+	ExecStart=$SCRIPT_DIR/$SCRIPT_NAME -send_crash_email
 	EOF
 	
 	sudo chown -R $USER:users /home/$USER/.config/systemd/user
@@ -1136,9 +1151,6 @@ case "$1" in
 	-deloldbackup)
 		script_deloldbackup
 		;;
-	-autorestart)
-		script_autorestart
-		;;
 	-update)
 		script_update
 		;;
@@ -1159,6 +1171,9 @@ case "$1" in
 		;;
 	-ssk_check_email)
 		script_ssk_check_email
+		;;
+	-send_crash_email)
+		script_send_crash_email
 		;;
 	-crash_kill)
 		script_crash_kill
