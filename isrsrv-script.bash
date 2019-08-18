@@ -29,7 +29,6 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 	STEAMCMDPSW=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep password | cut -d = -f2) #Your steam password
 	BETA_BRANCH_ENABLED=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_enabled | cut -d = -f2) #Beta branch enabled?
 	BETA_BRANCH_NAME=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_name | cut -d = -f2) #Beta branch name
-	APPID="363360" #app id of the steam game
 
 	#Email configuration
 	EMAIL_SENDER=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_sender | cut -d = -f2) #Send emails from this address
@@ -40,6 +39,9 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 else
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Configuration) The configuration is missing. Did you execute script installation?"
 fi
+
+#App id of the steam game
+APPID="363360"
 
 #Wine configuration
 WINE_ARCH="win32" #Architecture of the wine prefix
