@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-export VERSION="201908171632"
+export VERSION="201908181430"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -23,12 +23,23 @@ SCRIPT_NAME="$SERVICE_NAME-script.bash" #Script name
 SCRIPT_DIR="/home/$USER/scripts" #Location of this script
 UPDATE_DIR="/home/$USER/updates" #Location of update information for the script's automatic update feature
 
-#Steamcmd
-STEAMCMDUID=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep username | cut -d = -f2) #Your steam username
-STEAMCMDPSW=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep password | cut -d = -f2) #Your steam password
-BETA_BRANCH_ENABLED=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_enabled | cut -d = -f2) #Beta branch enabled?
-BETA_BRANCH_NAME=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_name | cut -d = -f2) #Beta branch name
-APPID="363360" #app id of the steam game
+if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
+	#Steamcmd
+	STEAMCMDUID=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep username | cut -d = -f2) #Your steam username
+	STEAMCMDPSW=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep password | cut -d = -f2) #Your steam password
+	BETA_BRANCH_ENABLED=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_enabled | cut -d = -f2) #Beta branch enabled?
+	BETA_BRANCH_NAME=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep beta_branch_name | cut -d = -f2) #Beta branch name
+	APPID="363360" #app id of the steam game
+
+	#Email configuration
+	EMAIL_SENDER=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_sender | cut -d = -f2) #Send emails from this address
+	EMAIL_RECIPIENT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_recipient | cut -d = -f2) #Send emails to this address
+	EMAIL_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_ssk | cut -d = -f2) #Send emails for SSK.txt expiration
+	EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update | cut -d = -f2) #Send emails when server updates
+	EMAIL_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_crash | cut -d = -f2) #Send emails when the server crashes
+else
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Configuration) The configuration is missing. Did you execute script installation?"
+fi
 
 #Wine configuration
 WINE_ARCH="win32" #Architecture of the wine prefix
@@ -54,12 +65,6 @@ BCKP_SRC="*" #What files to backup, * for all
 BCKP_DIR="/home/$USER/backups" #Location of stored backups
 BCKP_DEST="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
 BCKP_DELOLD="+3" #Delete old backups. Ex +3 deletes 3 days old backups.
-
-#Email configuration
-EMAIL_RECIPIENT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_recipient | cut -d = -f2) #Send emails to this address
-EMAIL_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_ssk | cut -d = -f2) #Send emails for SSK.txt expiration
-EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update | cut -d = -f2) #Send emails when server updates
-EMAIL_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_crash | cut -d = -f2) #Send emails when the server crashes
 
 #Log configuration
 export LOG_DIR="/home/$USER/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")/"
@@ -134,6 +139,8 @@ script_ssk_check() {
 		elif [[ "$SSK_DAYS" == "30" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old and may have expired. Consider updating it. No further notifications will be displayed untill it is updated." | tee -a "$LOG_SCRIPT"
 		fi
+	else
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is mising. Consider generating one or your server will not be visible on the server list." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
@@ -142,7 +149,7 @@ script_ssk_check_email() {
 	if [ -f "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt" ] ; then
 		SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
 		if [[ "$EMAIL_SSK" == "1" ]]; then
-			if [[ "$SSK_DAYS" == "27" ]] || [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]] || [[ "$SSK_DAYS" == "30" ]]; then
+			if [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]]; then
 				mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
 				Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
 				EOF
@@ -153,6 +160,10 @@ script_ssk_check_email() {
 				EOF
 			fi
 		fi
+	else
+		mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+		SSK.txt is mising. Consider generating one or your server will not be visible on the server list.
+		EOF
 	fi
 }
 
@@ -477,7 +488,6 @@ script_timer_one() {
 	script_logs
 	script_ssk_check
 	script_crash_kill
-	script_autorestart
 	script_save
 	script_sync
 	script_autobackup
@@ -490,7 +500,6 @@ script_timer_two() {
 	script_logs
 	script_ssk_check
 	script_crash_kill
-	script_autorestart
 	script_save
 	script_sync
 	script_update
@@ -521,13 +530,14 @@ script_install() {
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-tmpfs.service - Server service file for use with a RamDisk (only executes if RamDisk enabled)."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME.service - Server service file for normal hdd/ssd use."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-1.service"
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service - Executes scheduled script functions: autorestart, save, sync, backup and update."
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service - Executes scheduled script functions: save, sync, backup and update."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.service - Executes scheduled script functions: autorestart, save, sync and update."
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.service - Executes scheduled script functions: save, sync and update."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-3.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service - Executes scheduled SSK checks and sends email if configured as so."
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-4.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.service - Executes scheduled update checks for this script"
+	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-send-email.service - If email notifications enabled, send email if server crashed 3 times in 5 minutes."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-update.bash - Update script for automatic updates from github."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-config.conf - Stores steam username and password. Also stores tmpfs/ramdisk setting."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-screen.conf - Screen configuration to enable logging."
@@ -578,6 +588,9 @@ script_install() {
 		BETA_BRANCH_NAME="none"
 	fi
 	
+	echo ""
+	read -p "Enable automatic updates for the script from github? (y/n): " SCRIPT_UPDATE_ENABLE
+		
 	echo ""
 	read -p "Enable email notifications (y/n): " POSTFIX_ENABLE
 	if [[ "$POSTFIX_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -816,7 +829,7 @@ script_install() {
 	
 	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.timer <<- EOF
 	[Unit]
-	Description=$NAME Script Timer 4
+	Description=$NAME Script Timer 4 (Auto update script from github)
 	
 	[Timer]
 	OnCalendar=*-*-* 23:55:00
@@ -828,14 +841,14 @@ script_install() {
 	
 	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-4.service <<- EOF
 	[Unit]
-	Description=$NAME Script Timer 4 Service
+	Description=$NAME Script Timer 4 Service (Auto update script from github)
 	
 	[Service]
 	Type=oneshot
 	ExecStart=$SCRIPT_DIR/$SERVICE_NAME-update.bash
 	EOF
 	
-	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service <<- EOF
+	cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-send-email.service <<- EOF
 	[Unit]
 	Description=$NAME Script Send Email notification Service
 	
@@ -853,7 +866,10 @@ script_install() {
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-1.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-2.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-3.timer"
-	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-4.timer"
+	
+	if [[ "$SCRIPT_UPDATE_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+		su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-4.timer"
+	fi
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		su - $USER -c "systemctl --user enable $SERVICE_NAME-mkdir-tmpfs.service"
@@ -1102,7 +1118,6 @@ case "$1" in
 		echo -e "${GREEN}start ${RED}- ${GREEN}Start the server${NC}"
 		echo -e "${GREEN}stop ${RED}- ${GREEN}Stop the server${NC}"
 		echo -e "${GREEN}restart ${RED}- ${GREEN}Restart the server${NC}"
-		echo -e "${GREEN}autorestart ${RED}- ${GREEN}Automaticly restart the server if it's not running${NC}"
 		echo -e "${GREEN}save ${RED}- ${GREEN}Issue the save command to the server${NC}"
 		echo -e "${GREEN}sync ${RED}- ${GREEN}Sync from tmpfs to hdd/ssd${NC}"
 		echo -e "${GREEN}backup ${RED}- ${GREEN}Backup files, if server running or not.${NC}"
@@ -1190,7 +1205,7 @@ case "$1" in
 	echo ""
 	echo "For more detailed information, execute the script with the -help argument"
 	echo ""
-	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|autorestart|update|status|install \"server command\"}"
+	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|update|status|install \"server command\"}"
 	exit 1
 	;;
 esac
