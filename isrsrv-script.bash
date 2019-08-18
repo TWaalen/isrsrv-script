@@ -671,7 +671,7 @@ script_install() {
 	After=network.target home-$USER-tmpfs.mount $SERVICE_NAME-mkdir-tmpfs.service
 	Conflicts=$SERVICE_NAME.service
 	StartLimitBurst=3
-	StartLimitIntervalSec=180
+	StartLimitIntervalSec=300
 	StartLimitAction=none
 	OnFailure=$SERVICE_NAME-send-email.service
 	
@@ -702,7 +702,7 @@ script_install() {
 	After=network.target
 	Conflicts=$SERVICE_NAME-tmpfs.service
 	StartLimitBurst=3
-	StartLimitIntervalSec=180
+	StartLimitIntervalSec=300
 	StartLimitAction=none
 	OnFailure=$SERVICE_NAME-send-email.service
 	

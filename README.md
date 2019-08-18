@@ -41,7 +41,7 @@ Bash script for running Interstellar Rift on a linux server
 
 -send email notifications when SSK.txt near end of life (optional)
 
--send email notifications on crash (optional)
+-send email notifications after 3 crashes within a 5 minute time limit (optional)
 
 -send email notifications when server updated (optional)
 
@@ -80,4 +80,4 @@ That should be it.
 
 -If typing uppercase letters and symbols in the server console the server crashes. To avoid crashes use lowercase letters and use ID codes for user specific commands.
 
--If for some reason systemd reports the service failed when it stops, don't worry about it, the server session shuts down gracefully.
+-If for some reason systemd reports the service failed when it stops, don't worry about it, the server session shuts down gracefully. (This should be solved)
