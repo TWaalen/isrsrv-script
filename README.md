@@ -69,7 +69,7 @@ Run the script with root permitions like so (necessary for user creation):
 
 sudo ./isrsrv-script.bash -install
 
-The script will create a new non-sudo enabled user from wich the game server will run. If you want to have multiple game servers on the same machin just run the script multiple times but with a diffrent username inputted to the script.
+The script will create a new non-sudo enabled user from wich the game server will run. If you want to have multiple game servers on the same machine just run the script multiple times but with a diffrent username inputted to the script.
 
 
 Set "AutoSaveDelay" and "BackupSaveDelay" in server.json to 0 to disable the integrated saves and backups. The script will take care of saving and backups. This is required if using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
