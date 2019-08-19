@@ -183,7 +183,7 @@ script_send_crash_email() {
 		systemctl --user status $SERVICE > $LOG_DIR/service_log.txt
 		zip -j $LOG_DIR/service_logs.zip $LOG_DIR/service_log.txt
 		zip -j $LOG_DIR/script_logs.zip $LOG_SCRIPT
-		find $BCKP_SRC_DIR/Logs/ $BCKP_SRC_DIR/Dumps/ -maxdepth 1 -type f \( ! -iname "chat.txt" \) -mmin -30 | zip $LOG_DIR/game_logs.zip -j -@
+		find "$BCKP_SRC_DIR"/Logs/ "$BCKP_SRC_DIR"/Dumps/ -maxdepth 1 -type f \( ! -iname "chat.txt" \) -mmin -30 | zip $LOG_DIR/game_logs.zip -j -@
 		mail -a $LOG_DIR/service_logs.zip -a $LOG_DIR/script_logs.zip -a $LOG_DIR/game_logs.zip -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
 		The server crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please check the logs for more information.
 		
