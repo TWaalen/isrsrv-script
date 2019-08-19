@@ -15,6 +15,8 @@ Bash script for running Interstellar Rift on a linux server
 
 -postfix (optional for email notifications)
 
+-zip (optional but required if using the email feature)
+
 **Features:**
 
 -auto backups
