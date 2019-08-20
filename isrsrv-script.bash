@@ -2,8 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-#Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
-export VERSION="201908202221"
+export VERSION="201908202246"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -332,7 +331,8 @@ script_autobackup() {
 	fi
 }
 
-#Delete server save
+
+#Delete the savegame from the server
 script_delete_save() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "inactive" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) WARNING! This will delete the server's save game." | tee -a "$LOG_SCRIPT"
@@ -361,6 +361,7 @@ script_delete_save() {
 	fi
 }
 
+#Change the steam branch of the app
 script_change_branch() {
 	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "inactive" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Change branch) Server branch change initiated. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
