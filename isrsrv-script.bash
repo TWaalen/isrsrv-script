@@ -4,7 +4,7 @@
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
 #Leave this variable alone, it is tied in with the systemd service file so it changes accordingly by it.
 SCRIPT_ENABLED="0"
-export VERSION="201908192309"
+export VERSION="201908192305"
 
 #Basics
 export NAME="IsRSrv" #Name of the screen
@@ -160,18 +160,18 @@ script_ssk_check_email() {
 		SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
 		if [[ "$EMAIL_SSK" == "1" ]]; then
 			if [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]]; then
-				mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+				mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
 				Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
 				EOF
 			elif [[ "$SSK_DAYS" == "30" ]]; then
-				mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+				mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
 				Your SSK.txt is $SSK_DAYS days old and may have already expired. Please consider updating it.
 				No further email notifications for the SSK.txt will be sent until it is updated.
 				EOF
 			fi
 		fi
 	else
-		mail -r "$EMAIL_SENDER ($NAME-$USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
+		mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
 		SSK.txt is mising. Consider generating one or your server will not be visible on the server list.
 		EOF
 	fi
@@ -183,7 +183,7 @@ script_send_crash_email() {
 		systemctl --user status $SERVICE > $LOG_DIR/service_log.txt
 		zip -j $LOG_DIR/service_logs.zip $LOG_DIR/service_log.txt
 		zip -j $LOG_DIR/script_logs.zip $LOG_SCRIPT
-		find "$BCKP_SRC_DIR"/Logs/ "$BCKP_SRC_DIR"/Dumps/ -maxdepth 1 -type f \( ! -iname "chat.txt" \) -mmin -30 | zip $LOG_DIR/game_logs.zip -j -@
+		find "$BCKP_SRC_DIR"/Logs/ "$BCKP_SRC_DIR"/Dumps/ -maxdepth 1 -type f \( ! -iname "chat.txt" \) -mmin -30 -exec zip $LOG_DIR/game_logs.zip -j {} +
 		mail -a $LOG_DIR/service_logs.zip -a $LOG_DIR/script_logs.zip -a $LOG_DIR/game_logs.zip -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
 		The server crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please check the logs for more information.
 		
@@ -196,6 +196,8 @@ script_send_crash_email() {
 		
 		Contact the script developer 7thCore on discord for help regarding any problems the script may have caused.
 		EOF
+		rm $LOG_DIR/service_log.txt
+		rm -rf $LOG_DIR/*.zip
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Crash) Server crashed. Please review your logs." | tee -a "$LOG_SCRIPT"
 }
