@@ -80,6 +80,8 @@ That should be it.
 
 **Known issues are:**
 
+-wine version 4.12 and 4.13 are fubar. Use 4.11
+
 -If typing uppercase letters and symbols in the server console the server crashes. To avoid crashes use lowercase letters and use ID codes for user specific commands.
 
 -If for some reason systemd reports the service failed when it stops, don't worry about it, the server session shuts down gracefully. (This should be solved)
