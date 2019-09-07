@@ -80,7 +80,9 @@ That should be it.
 
 **Known issues are:**
 
--wine version 4.12 and 4.13 are fubar. Use 4.11
+-Wine version 4.12 and later are fubar. Use 4.11 or lower.
+
+-The winetricks package in ubuntu is outdated. Follow this guide to install the latest winetricks: https://wiki.winehq.org/Winetricks (needed for dotnet472)
 
 -If typing uppercase letters and symbols in the server console the server crashes. To avoid crashes use lowercase letters and use ID codes for user specific commands.
 
