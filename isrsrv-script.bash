@@ -53,7 +53,7 @@ WINE_PREFIX_GAME_CONFIG="drive_c/users/$USER/Application Data/InterstellarRift"
 #Ramdisk configuration
 TMPFS_DIR="/mnt/tmpfs/$USER" #Locaton of your tmpfs partition.
 
-if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the username for the installation process, otherwise use the executing user
+if [ "$EUID" -ne "0" ]; then #Check if script executed as root and assign the backup source dir.
 	#TmpFs/hdd variables
 	if [[ "$TMPFS_ENABLE" == "1" ]]; then
 		BCKP_SRC_DIR="$TMPFS_DIR/drive_c/users/$USER/Application Data/InterstellarRift" #Application data of the tmpfs
