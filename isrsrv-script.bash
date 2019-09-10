@@ -1111,6 +1111,8 @@ script_install() {
 	export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
 	EOF
 	
+	sudo chown -R $USER:users /home/$USER
+	
 	sudo chown $USER:users /home/$USER/.bash_profile
 	
 	echo "Installing service files"
