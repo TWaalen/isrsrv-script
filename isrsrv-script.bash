@@ -53,17 +53,13 @@ WINE_PREFIX_GAME_CONFIG="drive_c/users/$USER/Application Data/InterstellarRift"
 #Ramdisk configuration
 TMPFS_DIR="/mnt/tmpfs/$USER" #Locaton of your tmpfs partition.
 
-if [ "$EUID" -ne "0" ]; then #Check if script executed as root and assign the backup source dir.
-	#TmpFs/hdd variables
-	if [[ "$TMPFS_ENABLE" == "1" ]]; then
-		BCKP_SRC_DIR="$TMPFS_DIR/drive_c/users/$USER/Application Data/InterstellarRift" #Application data of the tmpfs
-		SERVICE="$SERVICE_NAME-tmpfs.service" #TmpFs service file name
-	elif [[ "$TMPFS_ENABLE" == "0" ]]; then
-		BCKP_SRC_DIR="$SRV_DIR/drive_c/users/$USER/Application Data/InterstellarRift" #Application data of the hdd/ssd
-		SERVICE="$SERVICE_NAME.service" #Hdd/ssd service file name
-	fi
+#TmpFs/hdd variables
+if [[ "$TMPFS_ENABLE" == "1" ]]; then
+	BCKP_SRC_DIR="$TMPFS_DIR/drive_c/users/$USER/Application Data/InterstellarRift" #Application data of the tmpfs
+	SERVICE="$SERVICE_NAME-tmpfs.service" #TmpFs service file name
 else
 	BCKP_SRC_DIR="$SRV_DIR/drive_c/users/$USER/Application Data/InterstellarRift" #Application data of the hdd/ssd
+	SERVICE="$SERVICE_NAME.service" #Hdd/ssd service file name
 fi
 
 #Backup configuration
@@ -1100,7 +1096,7 @@ script_install() {
 	sudo mkdir -p /home/$USER/.config/systemd/user
 	
 	echo "Installing bash profile"
-	cat > /home/$USER/.bash_profile <<- 'EOF'
+	cat >> /home/$USER/.bash_profile <<- 'EOF'
 	#
 	# ~/.bash_profile
 	#
@@ -1111,14 +1107,10 @@ script_install() {
 	export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
 	EOF
 	
-	sudo chown -R $USER:users /home/$USER
-	
-	sudo chown $USER:users /home/$USER/.bash_profile
-	
 	echo "Installing service files"
 	script_install_services
 	
-	sudo chown -R $USER:users /home/$USER/.config/systemd/user
+	sudo chown -R $USER:users /home/$USER
 	
 	echo "Enabling services"
 		
@@ -1261,7 +1253,7 @@ script_install() {
 	echo 'email_update='"$POSTFIX_UPDATE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_crash='"$POSTFIX_CRASH" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
-	sudo chown -R $USER:users /home/$USER/{backups,logs,scripts,server,updates}
+	sudo chown -R $USER:users /home/$USER
 	
 	echo "Generating wine prefix"
 	
@@ -1308,15 +1300,17 @@ script_install() {
 		su - $USER -c "steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID -beta $BETA_BRANCH_NAME validate +quit"
 	fi
 	
-	mkdir -p $BCKP_SRC_DIR
-	chown -R $USER:users $BCKP_SRC_DIR
+	if [ ! -d $BCKP_SRC_DIR ]; then
+		mkdir -p $BCKP_SRC_DIR
+	fi
 	
+	chown -R $USER:users /home/$USER
 	
 	echo "Installation complete"
 	echo ""
 	echo "Copy your SSK.txt to $BCKP_SRC_DIR"
 	echo "After you copied your SSK.txt reboot the server and the game server will start on boot."
-	echo "You can login to your the $USER account with <sudo -i -u $USER> from your primary account or root account."
+	echo "You can login to your $USER account with <sudo -i -u $USER> from your primary account or root account."
 	echo "The script was automaticly copied to the scripts folder located at $SCRIPT_DIR"
 	echo "For any settings you'll want to change, edit the $SCRIPT_DIR/$SERVICE_NAME-config.conf file."
 	echo ""
