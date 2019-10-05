@@ -892,7 +892,7 @@ script_install_services() {
 
 #Reinstalls the wine prefix
 script_install_prefix() {
-	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "inactive" ]]; then
+	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall Wine prefix) Wine prefix reinstallation commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
 		read -p "Are you sure you want to reinstall the wine prefix? (y/n): " REINSTALL_PREFIX
 		if [[ "$REINSTALL_PREFIX" =~ ^([yY][eE][sS]|[yY])$ ]]; then
