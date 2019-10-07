@@ -643,10 +643,6 @@ script_install_services() {
 	fi
 	
 	if [[ "$INSTALL_SYSTEMD_SERVICES_STATE" == "1" ]]; then
-		if [ -f "/home/$USER/.config/systemd/user/$SERVICE_NAME-fifo-pipe.service" ]; then
-			rm /home/$USER/.config/systemd/user/$SERVICE_NAME-fifo-pipe.service
-		fi
-		
 		if [ -f "/home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service" ]; then
 			rm /home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service
 		fi
@@ -695,20 +691,6 @@ script_install_services() {
 			rm /home/$USER/.config/systemd/user/$SERVICE_NAME-send-email.service
 		fi
 		
-		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-fifo-pipe.service <<- EOF
-		[Unit]
-		Description=$NAME Fifo pipe creator
-		Before=$SERVICE_NAME.service $SERVICE_NAME-tmpfs.service
-		
-		[Service]
-		Type=oneshot
-		WorkingDirectory=/home/$USER/
-		ExecStart=/usr/bin/mkfifo $LOG_TMP
-		
-		[Install]
-		WantedBy=default.target
-		EOF
-		
 		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service <<- EOF
 		[Unit]
 		Description=$NAME TmpFs dir creator
@@ -726,8 +708,8 @@ script_install_services() {
 		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-tmpfs.service <<- EOF
 		[Unit]
 		Description=$NAME TmpFs Server Service
-		Requires=$SERVICE_NAME-mkdir-tmpfs.service $SERVICE_NAME-fifo-pipe.service
-		After=network.target mnt-tmpfs.mount $SERVICE_NAME-mkdir-tmpfs.service $SERVICE_NAME-fifo-pipe.service
+		Requires=$SERVICE_NAME-mkdir-tmpfs.service
+		After=network.target mnt-tmpfs.mount $SERVICE_NAME-mkdir-tmpfs.service
 		Conflicts=$SERVICE_NAME.service
 		StartLimitBurst=3
 		StartLimitIntervalSec=300
@@ -757,8 +739,7 @@ script_install_services() {
 		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME.service <<- EOF
 		[Unit]
 		Description=$NAME Server Service
-		Requires=$SERVICE_NAME-fifo-pipe.service
-		After=network.target $SERVICE_NAME-fifo-pipe.service
+		After=network.target
 		Conflicts=$SERVICE_NAME-tmpfs.service
 		StartLimitBurst=3
 		StartLimitIntervalSec=300
