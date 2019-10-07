@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="201910042353"
+export VERSION="201910072353"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -595,7 +595,7 @@ script_install_tmux_config() {
 		bind C-a send-prefix
 
 		#Bind C-a r to reload the config file
-		bind-key r source-file /$SCRIPT_DIR/$SERVICE_NAME-tmux.conf \; display-message "Config reloaded!"
+		bind-key r source-file $SCRIPT_DIR/$SERVICE_NAME-tmux.conf \; display-message "Config reloaded!"
 
 		set-hook -g session-created 'resize-window -y 24 -x 10000'
 		set-hook -g session-created "pipe-pane -o 'tee >> $LOG_TMP'"
@@ -643,6 +643,10 @@ script_install_services() {
 	fi
 	
 	if [[ "$INSTALL_SYSTEMD_SERVICES_STATE" == "1" ]]; then
+		if [ -f "/home/$USER/.config/systemd/user/$SERVICE_NAME-fifo-pipe.service" ]; then
+			rm /home/$USER/.config/systemd/user/$SERVICE_NAME-fifo-pipe.service
+		fi
+		
 		if [ -f "/home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service" ]; then
 			rm /home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service
 		fi
@@ -690,7 +694,21 @@ script_install_services() {
 		if [ -f "/home/$USER/.config/systemd/user/$SERVICE_NAME-send-email.service" ]; then
 			rm /home/$USER/.config/systemd/user/$SERVICE_NAME-send-email.service
 		fi
-			
+		
+		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-fifo-pipe.service <<- EOF
+		[Unit]
+		Description=$NAME Fifo pipe creator
+		Before=$SERVICE_NAME.service $SERVICE_NAME-tmpfs.service
+		
+		[Service]
+		Type=oneshot
+		WorkingDirectory=/home/$USER/
+		ExecStart=/usr/bin/mkfifo $LOG_TMP
+		
+		[Install]
+		WantedBy=default.target
+		EOF
+		
 		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-mkdir-tmpfs.service <<- EOF
 		[Unit]
 		Description=$NAME TmpFs dir creator
@@ -708,8 +726,8 @@ script_install_services() {
 		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-tmpfs.service <<- EOF
 		[Unit]
 		Description=$NAME TmpFs Server Service
-		Requires=$SERVICE_NAME-mkdir-tmpfs.service
-		After=network.target mnt-tmpfs.mount $SERVICE_NAME-mkdir-tmpfs.service
+		Requires=$SERVICE_NAME-mkdir-tmpfs.service $SERVICE_NAME-fifo-pipe.service
+		After=network.target mnt-tmpfs.mount $SERVICE_NAME-mkdir-tmpfs.service $SERVICE_NAME-fifo-pipe.service
 		Conflicts=$SERVICE_NAME.service
 		StartLimitBurst=3
 		StartLimitIntervalSec=300
@@ -720,12 +738,13 @@ script_install_services() {
 		Type=forking
 		WorkingDirectory=$TMPFS_DIR/$WINE_PREFIX_GAME_DIR/Build/
 		ExecStartPre=/usr/bin/rsync -av --info=progress2 $SRV_DIR/ $TMPFS_DIR
-		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-tmux.conf -L %u-tmux.sock new-session -s $NAME -d env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR wineconsole --backend=curses $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE
+		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-tmux.conf -L %u-tmux.sock new-session -d -s $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR wineconsole --backend=curses $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE
 		ExecStop=/usr/bin/tmux -L %u-tmux.sock send-keys -t $NAME.0 'quittimer 15 server shutting down in 15 seconds' ENTER
 		ExecStop=/usr/bin/sleep 20
 		ExecStop=/usr/bin/env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR /usr/bin/wineserver -k
 		ExecStop=/usr/bin/sleep 10
 		ExecStop=/usr/bin/rsync -av --info=progress2 $TMPFS_DIR/ $SRV_DIR
+		ExecStop=/usr/bin/rm $LOG_TMP
 		TimeoutStartSec=infinity
 		TimeoutStopSec=120
 		RestartSec=10
@@ -738,7 +757,8 @@ script_install_services() {
 		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME.service <<- EOF
 		[Unit]
 		Description=$NAME Server Service
-		After=network.target
+		Requires=$SERVICE_NAME-fifo-pipe.service
+		After=network.target $SERVICE_NAME-fifo-pipe.service
 		Conflicts=$SERVICE_NAME-tmpfs.service
 		StartLimitBurst=3
 		StartLimitIntervalSec=300
@@ -748,11 +768,12 @@ script_install_services() {
 		[Service]
 		Type=forking
 		WorkingDirectory=$SRV_DIR/$WINE_PREFIX_GAME_DIR/Build/
-		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-tmux.conf -L %u-tmux.sock new-session -s $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineconsole --backend=curses $SRV_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE
+		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-tmux.conf -L %u-tmux.sock new-session -d -s $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineconsole --backend=curses $SRV_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE
 		ExecStop=/usr/bin/tmux -L %u-tmux.sock send-keys -t $NAME.0 'quittimer 15 server shutting down in 15 seconds' ENTER
 		ExecStop=/usr/bin/sleep 20
 		ExecStop=/usr/bin/env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR /usr/bin/wineserver -k
 		ExecStop=/usr/bin/sleep 10
+		ExecStop=/usr/bin/rm $LOG_TMP
 		TimeoutStartSec=infinity
 		TimeoutStopSec=120
 		RestartSec=10
@@ -892,7 +913,7 @@ script_install_services() {
 
 #Reinstalls the wine prefix
 script_install_prefix() {
-	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]]; then
+	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "inactive" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall Wine prefix) Wine prefix reinstallation commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
 		read -p "Are you sure you want to reinstall the wine prefix? (y/n): " REINSTALL_PREFIX
 		if [[ "$REINSTALL_PREFIX" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -946,79 +967,79 @@ script_install_update_script() {
 	fi
 	
 	if [[ "$INSTALL_UPDATE_SCRIPT_STATE" == "1" ]]; then
-		if [ -f "/$SCRIPT_DIR/$SERVICE_NAME-update.bash" ]; then
-			rm /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+		if [ -f "$SCRIPT_DIR/$SERVICE_NAME-update.bash" ]; then
+			rm $SCRIPT_DIR/$SERVICE_NAME-update.bash
 		fi
 		
-		echo '#!/bin/bash' > /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'NAME=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 NAME | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'SERVICE_NAME=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 SERVICE_NAME | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'LOG_DIR="/home/'"$USER"'/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'script_update() {' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	git clone https://github.com/7thCore/'"$SERVICE_NAME"'-script /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	INSTALLED=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	AVAILABLE=$(cat /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	if [ "$AVAILABLE" -gt "$INSTALLED" ]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update detected." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Installed:$INSTALLED, Available:$AVAILABLE" | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		rm /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		chmod +x /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo ''  >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		INSTALLED=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		AVAILABLE=$(cat /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash | grep -m 1 VERSION | cut -d \" -f2)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		if [ "$AVAILABLE" -eq "$INSTALLED" ]; then' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '			echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update complete." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		else' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '			echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update failed." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		fi' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	else' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) No new script updates detected." | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Installed:$INSTALLED, Available:$AVAILABLE" | tee -a $LOG_SCRIPT' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	fi' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	rm -rf /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo "}" >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'script_update_force() {' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	git clone https://github.com/7thCore/'"$SERVICE_NAME"'-script /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	rm /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	chmod +x /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	rm -rf /tmp/'"$SERVICE_NAME"'-script' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo "}" >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'case "$1" in' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	-help)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo -e "${CYAN}Time: $(date +"%Y-%m-%d %H:%M:%S") ${NC}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo -e "${CYAN}$NAME server script by 7thCore${NC}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo ""' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo -e "${LIGHTRED}The script updates the primary server script from github.${NC}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo ""' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo -e "${GREEN}update ${RED}- ${GREEN}Check for script updates and update if available${NC}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		echo -e "${GREEN}force_update ${RED}- ${GREEN}Download latest script version and install it no matter if the installed script is the same version${NC}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		;;' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	-update)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		script_update' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		;;' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	-force_update)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		script_force_update' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '		;;' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	*)' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	echo -e "${CYAN}Time: $(date +"%Y-%m-%d %H:%M:%S") ${NC}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	echo -e "${CYAN}$NAME update script for server script by 7thCore${NC}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	echo ""' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	echo "For more detailed information, execute the script with the -help argument"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	echo ""' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	echo "Usage: $0 {update|force_update}"' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	exit 1' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo '	;;' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
-		echo 'esac' >> /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '#!/bin/bash' > $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'NAME=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 NAME | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'SERVICE_NAME=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 SERVICE_NAME | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'LOG_DIR="/home/'"$USER"'/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'script_update() {' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	git clone https://github.com/7thCore/'"$SERVICE_NAME"'-script /tmp/'"$SERVICE_NAME"'-script' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	INSTALLED=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 VERSION | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	AVAILABLE=$(cat /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash | grep -m 1 VERSION | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	if [ "$AVAILABLE" -gt "$INSTALLED" ]; then' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update detected." | tee -a $LOG_SCRIPT' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Installed:$INSTALLED, Available:$AVAILABLE" | tee -a $LOG_SCRIPT' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		rm /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		chmod +x /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo ''  >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		INSTALLED=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 VERSION | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		AVAILABLE=$(cat /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash | grep -m 1 VERSION | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		if [ "$AVAILABLE" -eq "$INSTALLED" ]; then' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '			echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update complete." | tee -a $LOG_SCRIPT' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		else' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '			echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Script update failed." | tee -a $LOG_SCRIPT' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		fi' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	else' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) No new script updates detected." | tee -a $LOG_SCRIPT' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo "$(date +"%Y-%m-%d %H:%M:%S") [$INSTALLED] [$NAME] [INFO] (Script update) Installed:$INSTALLED, Available:$AVAILABLE" | tee -a $LOG_SCRIPT' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	fi' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	rm -rf /tmp/'"$SERVICE_NAME"'-script' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo "}" >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'script_update_force() {' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	git clone https://github.com/7thCore/'"$SERVICE_NAME"'-script /tmp/'"$SERVICE_NAME"'-script' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	rm /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	cp /tmp/'"$SERVICE_NAME"'-script/'"$SERVICE_NAME"'-script.bash /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	chmod +x /home/'"$USER"'/scripts/'"$SERVICE_NAME"'-script.bash' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	rm -rf /tmp/'"$SERVICE_NAME"'-script' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo "}" >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'case "$1" in' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	-help)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo -e "${CYAN}Time: $(date +"%Y-%m-%d %H:%M:%S") ${NC}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo -e "${CYAN}$NAME server script by 7thCore${NC}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo ""' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo -e "${LIGHTRED}The script updates the primary server script from github.${NC}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo ""' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo -e "${GREEN}update ${RED}- ${GREEN}Check for script updates and update if available${NC}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		echo -e "${GREEN}force_update ${RED}- ${GREEN}Download latest script version and install it no matter if the installed script is the same version${NC}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		;;' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	-update)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		script_update' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		;;' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	-force_update)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		script_force_update' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '		;;' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	*)' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	echo -e "${CYAN}Time: $(date +"%Y-%m-%d %H:%M:%S") ${NC}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	echo -e "${CYAN}$NAME update script for server script by 7thCore${NC}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	echo ""' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	echo "For more detailed information, execute the script with the -help argument"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	echo ""' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	echo "Usage: $0 {update|force_update}"' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	exit 1' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo '	;;' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
+		echo 'esac' >> $SCRIPT_DIR/$SERVICE_NAME-update.bash
 		
-		chmod +x /$SCRIPT_DIR/$SERVICE_NAME-update.bash
+		chmod +x $SCRIPT_DIR/$SERVICE_NAME-update.bash
 		if [ "$EUID" -ne "0" ]; then
 			if [[ "$INSTALL_UPDATE_SCRIPT_STATE" == "1" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall update script) Update script reinstallation complete." | tee -a "$LOG_SCRIPT"
@@ -1130,7 +1151,7 @@ script_install() {
 		TMPFS_ENABLE="1"
 		read -p "Do you already have a ramdisk mounted at /mnt/tmpfs? (y/n): " TMPFS_PRESENT
 		if [[ "$TMPFS_PRESENT" =~ ^([nN][oO]|[nN])$ ]]; then
-			read -p "Ramdisk size (Minimum of 8G for a single server, 16G for two and so on): " TMPFS_SIZE
+			read -p "Ramdisk size (Minimum of 6G for a single server, 12G for two and so on): " TMPFS_SIZE
 			echo "Installing ramdisk configuration"
 			cat >> /etc/fstab <<- EOF
 			
@@ -1321,8 +1342,8 @@ script_install() {
 		su - $USER -c "steamcmd +@sSteamCmdForcePlatformType windows +login $STEAMCMDUID $STEAMCMDPSW +force_install_dir $SRV_DIR/$WINE_PREFIX_GAME_DIR +app_update $APPID -beta $BETA_BRANCH_NAME validate +quit"
 	fi
 	
-	if [ ! -d $BCKP_SRC_DIR ]; then
-		mkdir -p $BCKP_SRC_DIR
+	if [ ! -d "$BCKP_SRC_DIR" ]; then
+		mkdir -p "$BCKP_SRC_DIR"
 	fi
 	
 	chown -R $USER:users /home/$USER
