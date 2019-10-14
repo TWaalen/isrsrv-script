@@ -47,7 +47,7 @@ APPID="363360"
 #Wine configuration
 WINE_ARCH="win32" #Architecture of the wine prefix
 WINE_PREFIX_GAME_DIR="drive_c/Games/InterstellarRift" #Server executable directory
-WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline -linux -nossl" #Server executable
+WINE_PREFIX_GAME_EXE="Build/IR.exe -server -inline -linux -nossl -noConsoleAutoComplete" #Server executable
 WINE_PREFIX_GAME_CONFIG="drive_c/users/$USER/Application Data/InterstellarRift"
 
 #Ramdisk configuration
@@ -720,7 +720,7 @@ script_install_services() {
 		WorkingDirectory=$TMPFS_DIR/$WINE_PREFIX_GAME_DIR/Build/
 		ExecStartPre=/usr/bin/rsync -av --info=progress2 $SRV_DIR/ $TMPFS_DIR
 		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-tmux.conf -L %u-tmux.sock new-session -d -s $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR wineconsole --backend=curses $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE
-		ExecStop=/usr/bin/tmux -L %u-tmux.sock send-keys -t $NAME.0 'quittimer 15 server shutting down in 15 seconds' ENTER
+		ExecStop=/usr/bin/tmux -L %u-tmux.sock send-keys -t $NAME.0 'quittimer 15 Server shutting down in 15 seconds!' ENTER
 		ExecStop=/usr/bin/sleep 20
 		ExecStop=/usr/bin/env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR /usr/bin/wineserver -k
 		ExecStop=/usr/bin/sleep 10
@@ -749,7 +749,7 @@ script_install_services() {
 		Type=forking
 		WorkingDirectory=$SRV_DIR/$WINE_PREFIX_GAME_DIR/Build/
 		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/$SERVICE_NAME-tmux.conf -L %u-tmux.sock new-session -d -s $NAME env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineconsole --backend=curses $SRV_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE
-		ExecStop=/usr/bin/tmux -L %u-tmux.sock send-keys -t $NAME.0 'quittimer 15 server shutting down in 15 seconds' ENTER
+		ExecStop=/usr/bin/tmux -L %u-tmux.sock send-keys -t $NAME.0 'quittimer 15 Server shutting down in 15 seconds!' ENTER
 		ExecStop=/usr/bin/sleep 20
 		ExecStop=/usr/bin/env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR /usr/bin/wineserver -k
 		ExecStop=/usr/bin/sleep 10
