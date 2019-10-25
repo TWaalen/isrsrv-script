@@ -65,7 +65,11 @@ Sometime between the installation process you will be prompted for steam's two f
 
 Now for the installation.
 
-Run the script with root permitions like so (necessary for user creation):
+If you wish you can have the script install the required packages with (Only for Arch Linux & Ubuntu 19.10):
+
+sudo ./isrsrv-script.bash -install_packages
+
+After that run the script with root permitions like so (necessary for user creation):
 
 sudo ./isrsrv-script.bash -install
 
