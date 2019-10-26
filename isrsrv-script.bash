@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="201910260057"
+export VERSION="201910260957"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -1303,10 +1303,12 @@ script_install() {
 	echo ""
 	read -p "Enter password for user $USER: " USER_PASS
 	echo ""
+	echo "You will now have to enter your Steam credentials. Exepct a prompt for a Steam guard code if you have it enabled."
+	echo ""
 	while [[ "$STEAMCMDSUCCESS" != "0" ]]; do
-		read -p "Enter your steam username: " STEAMCMDUID
+		read -p "Enter your Steam username: " STEAMCMDUID
 		echo ""
-		read -p "Enter your steam password: " STEAMCMDPSW
+		read -p "Enter your Steam password: " STEAMCMDPSW
 		su - $USER -c "steamcmd +login $STEAMCMDUID $STEAMCMDPSW +quit"
 		STEAMCMDSUCCESS=$?
 		if [[ "$STEAMCMDSUCCESS" == "0" ]]; then
@@ -1483,16 +1485,6 @@ script_install() {
 	env DISPLAY=:5.0 WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q dotnet472
 	pkill -f Xvfb
 	EOF
-	
-	echo "Updating and logging in to Steam. Prepare to enter Steam Guard code..."
-	
-	su - $USER <<- EOF
-	echo -en "/n" | steamcmd +login $STEAMCMDUID $STEAMCMDPSW +quit
-	EOF
-	
-	read -p "Enter Steam Guard code: " STEAMCMDSG
-	
-	su - $USER -c "steamcmd +login $STEAMCMDUID $STEAMCMDPSW $STEAMCMDSG +quit"
 	
 	echo "Installing game..."
 	
