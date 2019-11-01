@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="201910260957"
+export VERSION="201911011222"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -1219,7 +1219,7 @@ script_install_packages() {
 			echo "echo "[multilib]" >> /mnt/etc/pacman.conf" >> /mnt/etc/pacman.conf
 			
 			#Install packages and enable services
-			sudo pacman -Syu --noconfirm wine-staging wine-mono wine_gecko libpulse libxml2 mpg123 lcms2 giflib libpng gnutls gst-plugins-base gst-plugins-good lib32-libpulse lib32-libxml2 lib32-mpg123 lib32-lcms2 lib32-giflib lib32-libpng lib32-gnutls lib32-gst-plugins-base lib32-gst-plugins-good samba xvfb tmux postfix zip
+			sudo pacman -Syu --noconfirm wine-staging wine-mono wine_gecko libpulse libxml2 mpg123 lcms2 giflib libpng gnutls gst-plugins-base gst-plugins-good lib32-libpulse lib32-libxml2 lib32-mpg123 lib32-lcms2 lib32-giflib lib32-libpng lib32-gnutls lib32-gst-plugins-base lib32-gst-plugins-good cabextract unzip p7zip wget curl samba xorg-server-xvfb tmux postfix zip
 			sudo systemctl enable smb nmb winbind
 			sudo systemctl start smb nmb winbind
 		elif [[ "$DISTRO" == "ubuntu" ]]; then
