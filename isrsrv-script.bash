@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="201911011222"
+export VERSION="201911041228"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -10,7 +10,7 @@ if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the use
 	USER="$(whoami)"
 else
 	echo "WARNING: Installation mode"
-	read -p "Please enter username (default interstellar_rift):" USER #Enter desired username that will be used when creating the new user
+	read -p "Please enter username (leave empty for interstellar_rift):" USER #Enter desired username that will be used when creating the new user
 	USER=${USER:=interstellar_rift} #If no username was given, use default
 fi
 
@@ -34,9 +34,15 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 	EMAIL_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_ssk | cut -d = -f2) #Send emails for SSK.txt expiration
 	EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update | cut -d = -f2) #Send emails when server updates
 	EMAIL_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_crash | cut -d = -f2) #Send emails when the server crashes
-	
+
 	#Ramdisk configuration
 	TMPFS_ENABLE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep tmpfs_enable | cut -d = -f2) #Get configuration for tmpfs
+
+	#Backup configuration
+	BCKP_DELOLD=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep bckp_delold | cut -d = -f2) #Delete old backups.
+
+	#Log configuration
+	LOG_DELOLD=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep log_delold | cut -d = -f2) #Delete old logs.
 else
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Configuration) The configuration is missing. Did you execute script installation?"
 fi
@@ -66,13 +72,11 @@ fi
 BCKP_SRC="*" #What files to backup, * for all
 BCKP_DIR="/home/$USER/backups" #Location of stored backups
 BCKP_DEST="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are sorted, by default it's sorted in folders by month and day
-BCKP_DELOLD="+3" #Delete old backups. Ex +3 deletes 3 days old backups.
 
 #Log configuration
 export LOG_DIR="/home/$USER/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")"
 export LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log
 export LOG_TMP="/tmp/$USER-$SERVICE_NAME-tmux.log"
-LOG_DELOLD="+7" #Delete old logs. Ex +14 deletes 14 days old logs.
 
 TIMEOUT=120
 
@@ -93,7 +97,7 @@ script_logs() {
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old logs) Deleting old logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	#Delete old logs
-	find $LOG_DIR/* -mtime $LOG_DELOLD -exec rm {} \;
+	find $LOG_DIR/* -mtime +$LOG_DELOLD -exec rm {} \;
 	#Delete empty folders
 	#find $LOG_DIR/ -type d 2> /dev/null -empty -exec rm -rf {} \;
 	find $BCKP_DIR/ -type d -empty -delete
@@ -300,7 +304,7 @@ script_restart() {
 script_deloldbackup() {
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old backup) Deleting old backups: $BCKP_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	# Delete old backups
-	find $BCKP_DIR/* -type f -mtime $BCKP_DELOLD -exec rm {} \;
+	find $BCKP_DIR/* -type f -mtime +$BCKP_DELOLD -exec rm {} \;
 	# Delete empty folders
 	#find $BCKP_DIR/ -type d 2> /dev/null -empty -exec rm -rf {} \;
 	find $BCKP_DIR/ -type d -empty -delete
@@ -1472,6 +1476,8 @@ script_install() {
 	echo 'email_ssk='"$POSTFIX_SSK" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_update='"$POSTFIX_UPDATE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_crash='"$POSTFIX_CRASH" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'bckp_delold=14' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'log_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
 	sudo chown -R $USER:users /home/$USER
 	
