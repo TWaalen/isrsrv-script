@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="201911041228"
+export VERSION="201911081420"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -1307,6 +1307,9 @@ script_install() {
 	echo ""
 	read -p "Enter password for user $USER: " USER_PASS
 	echo ""
+	sudo useradd -m -g users -s /bin/bash $USER
+	echo -en "$USER_PASS\n$USER_PASS\n" | sudo passwd $USER
+	echo ""
 	echo "You will now have to enter your Steam credentials. Exepct a prompt for a Steam guard code if you have it enabled."
 	echo ""
 	while [[ "$STEAMCMDSUCCESS" != "0" ]]; do
@@ -1325,9 +1328,6 @@ script_install() {
 	echo ""
 	read -p "Enable RamDisk (y/n): " TMPFS
 	echo ""
-	
-	sudo useradd -m -g users -s /bin/bash $USER
-	echo -en "$USER_PASS\n$USER_PASS\n" | sudo passwd $USER
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		TMPFS_ENABLE="1"
