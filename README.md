@@ -5,6 +5,8 @@ Bash script for running Interstellar Rift on a linux server
 
 -xvfb
 
+-rsync
+
 -tmux
 
 -wine
@@ -79,6 +81,12 @@ The script will create a new non-sudo enabled user from wich the game server wil
 Set "AutoSaveDelay" and "BackupSaveDelay" in server.json to 0 to disable the integrated saves and backups. The script will take care of saving and backups. This is required if using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd.
 
 After that paste in you SSK.txt and then reboot the server. After that the game should start on boot.
+
+There is also a function available to move the SSK.txt from your home folder to the AppData folder of IsR so if you want an easy way of replacing SSK.txt files you can use that.
+
+Any other script commands are available with:
+
+./isrsrv-script.bash -help
 
 That should be it.
 
