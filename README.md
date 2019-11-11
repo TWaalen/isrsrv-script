@@ -88,6 +88,8 @@ You can also install bash aliases to make your life easier with the following co
 
 ./isrsrv-script.bash -install_aliases
 
+After that relog.
+
 Any other script commands are available with:
 
 ./isrsrv-script.bash -help
