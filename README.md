@@ -84,6 +84,10 @@ After that paste in you SSK.txt and then reboot the server. After that the game 
 
 There is also a function available to move the SSK.txt from your home folder to the AppData folder of IsR so if you want an easy way of replacing SSK.txt files you can use that.
 
+You can also install bash aliases to make your life easier with the following command:
+
+./isrsrv-script.bash -install_aliases
+
 Any other script commands are available with:
 
 ./isrsrv-script.bash -help
