@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="201911241230"
+export VERSION="201911241333"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -237,7 +237,7 @@ script_send_crash_email() {
 		script_logs.zip - Logs from the script
 		game_logs.zip - Logs and dump files from the game
 		
-		ONLY SEND game_logs.zip TO THE DEVS IF NEED BE! DON'T SEND OTHER ARCHIVES!
+		ONLY SEND game_logs.zip TO THE DEVS IF NEED BE! DON NOT SEND OTHER ARCHIVES!
 		
 		Contact the script developer 7thCore on discord for help regarding any problems the script may have caused.
 		EOF
@@ -559,7 +559,7 @@ script_update() {
 script_install_alias(){
 	if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the username for the installation process, otherwise use the executing user
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install .bashrc aliases) Installation of aliases in .bashrc commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
-		read -p "Are you sure you want to reinstall the tmux configuration? (y/n): " INSTALL_BASHRC_ALIAS
+		read -p "Are you sure you want to reinstall bash aliases into .bashrc? (y/n): " INSTALL_BASHRC_ALIAS
 		if [[ "$INSTALL_BASHRC_ALIAS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 			INSTALL_BASHRC_ALIAS_STATE="1"
 		elif [[ "$INSTALL_BASHRC_ALIAS" =~ ^([nN][oO]|[nN])$ ]]; then
@@ -1149,12 +1149,12 @@ script_install_prefix() {
 #Install or reinstall the update script
 script_install_update_script() {
 	if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the username for the installation process, otherwise use the executing user
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall update script) Systemd services reinstallation commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall update script) Update script reinstallation commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
 		read -p "Are you sure you want to reinstall the update script? (y/n): " REINSTALL_UPDATE_SCRIPT
 		if [[ "$REINSTALL_UPDATE_SCRIPT" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 			INSTALL_UPDATE_SCRIPT_STATE="1"
 		elif [[ "$REINSTALL_UPDATE_SCRIPT" =~ ^([nN][oO]|[nN])$ ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall update script) Systemd services reinstallation aborted." | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall update script) Update script reinstallation aborted." | tee -a "$LOG_SCRIPT"
 			INSTALL_UPDATE_SCRIPT_STATE="0"
 		fi
 	else
