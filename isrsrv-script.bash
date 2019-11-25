@@ -183,7 +183,7 @@ script_ssk_check_email() {
 #Install/reinstall ssk
 script_install_ssk(){
 	if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the username for the installation process, otherwise use the executing user
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install/replace SSK) Installation SSK commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install/replace SSK) Installation of SSK commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
 		read -p "Are you sure you want to install/reinstall the SSK? (y/n): " INSTALL_SSK
 		if [[ "$INSTALL_SSK" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 			INSTALL_SSK_STATE="1"
@@ -1756,7 +1756,7 @@ case "$1" in
 	echo ""
 	echo "For more detailed information, execute the script with the -help argument"
 	echo ""
-	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|ssk_check|install_ssk|install_aliases|rebuild_tmux_config|rebuild_commands|rebuild_services|rebuild_prefix|rebuild_update_script|update|status|install|install_packages}"
+	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|ssk_check|ssk_install|install_aliases|rebuild_tmux_config|rebuild_commands|rebuild_services|rebuild_prefix|rebuild_update_script|update|status|install|install_packages}"
 	exit 1
 	;;
 esac
