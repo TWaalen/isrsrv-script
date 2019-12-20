@@ -43,6 +43,9 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 
 	#Log configuration
 	LOG_DELOLD=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep log_delold | cut -d = -f2) #Delete old logs.
+	
+	#Script updates from github
+	SCRIPT_UPDATES_GITHUB=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep script_updates | cut -d = -f2) #Get configuration for script updates.
 else
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Configuration) The configuration is missing. Did you execute script installation?"
 fi
@@ -1437,7 +1440,7 @@ script_install() {
 	fi
 	
 	echo ""
-	read -p "Enable automatic updates for the script from github? (y/n): " SCRIPT_UPDATE_ENABLE
+	read -p "Enable automatic updates for the script from github? (y/n): " SCRIPT_UPDATE_CONFIG
 	
 	echo ""
 	read -p "Enable commands wrapper script (custom commands script for players)? (y/n): " SCRIPT_COMMANDS_WRAPPER_ENABLE
@@ -1529,8 +1532,11 @@ script_install() {
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-2.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-3.timer"
 	
-	if [[ "$SCRIPT_UPDATE_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+	if [[ "$SCRIPT_UPDATE_CONFIG" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-4.timer"
+		SCRIPT_UPDATE_ENABLED="1"
+	else
+		SCRIPT_UPDATE_ENABLED="0"
 	fi
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -1567,6 +1573,7 @@ script_install() {
 	echo 'email_ssk='"$POSTFIX_SSK" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_update='"$POSTFIX_UPDATE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_crash='"$POSTFIX_CRASH" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'script_updates='"$SCRIPT_UPDATE_ENABLED" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'bckp_delold=14' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'log_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
