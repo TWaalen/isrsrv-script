@@ -53,11 +53,11 @@ Bash script for running Interstellar Rift on a linux server
 
 Log in to your server with ssh and execute:
 
-git clone https://github.com/7thCore/isrsrv-script
+```git clone https://github.com/7thCore/isrsrv-script```
 
 Make it executable:
 
-chmod +x ./isrsrv-script.bash
+```chmod +x ./isrsrv-script.bash```
 
 The script will ask you for your steam username and password and will store it in a configuration file for automatic updates. Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the two factor authentication code and breaks the auto update feature. Use Steam Guard via email.
 
@@ -69,11 +69,11 @@ Now for the installation.
 
 If you wish you can have the script install the required packages with (Only for Arch Linux & Ubuntu 19.10):
 
-sudo ./isrsrv-script.bash -install_packages
+```sudo ./isrsrv-script.bash -install_packages```
 
 After that run the script with root permitions like so (necessary for user creation):
 
-sudo ./isrsrv-script.bash -install
+```sudo ./isrsrv-script.bash -install```
 
 The script will create a new non-sudo enabled user from wich the game server will run. If you want to have multiple game servers on the same machine just run the script multiple times but with a diffrent username inputted to the script.
 
@@ -86,13 +86,13 @@ There is also a function available to move the SSK.txt from your home folder to 
 
 You can also install bash aliases to make your life easier with the following command:
 
-./isrsrv-script.bash -install_aliases
+```./isrsrv-script.bash -install_aliases```
 
 After that relog.
 
 Any other script commands are available with:
 
-./isrsrv-script.bash -help
+```./isrsrv-script.bash -help```
 
 That should be it.
 
