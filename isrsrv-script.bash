@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202001081853"
+export VERSION="202001081945"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -936,7 +936,7 @@ script_install_commands() {
 			else
 				if [[ "$line" != *"[ServerCommand]"* ]] && [[ "$line" == *"Announcing server to masterserver: invalid steam ticket"* ]] && [[ "$line" != *"[All]"* ]]; then
 						if [[ "$EMAIL_SSK" == "1" ]] && [ ! -d "$SSK_DISABLE_NOTIFICATIONS" ]; then
-							mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT << 'Server SSK expired. Please generate a new SSK'
+							mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<< 'Server SSK expired. Please generate a new SSK'
 						fi
 						if [[ "$DISCORD_SSK" == "1" ]] && [ ! -d "$SSK_DISABLE_NOTIFICATIONS" ]; then
 							while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
