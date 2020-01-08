@@ -51,7 +51,7 @@ Bash script for running Interstellar Rift on a linux server
 
 -send email notifications on server startup (optional)
 
--send email notifications when server shutdown (optional)
+-send email notifications on server shutdown (optional)
 
 -send discord notifications when SSK.txt near end of life or expired (optional)
 
@@ -61,7 +61,7 @@ Bash script for running Interstellar Rift on a linux server
 
 -send discord notifications on server startup (optional)
 
--send discord notifications when server shutdown (optional)
+-send discord notifications on server shutdown (optional)
 
 -supports multiple discord webhooks
 
