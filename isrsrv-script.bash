@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202001131706"
+export VERSION="202001141650"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -195,9 +195,7 @@ script_enable_services() {
 		systemctl --user enable $SERVICE_NAME-timer-2.timer
 	fi
 	if [[ "$(systemctl --user show -p UnitFileState --value $SERVICE_NAME-timer-3.timer)" == "disabled" ]]; then
-		if [[ "$SCRIPT_UPDATES_GITHUB" == "1" ]]; then
-			systemctl --user enable $SERVICE_NAME-timer-3.timer
-		fi
+		systemctl --user enable $SERVICE_NAME-timer-3.timer
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Enable services) Services successfully Enabled." | tee -a "$LOG_SCRIPT"
 }
@@ -1295,7 +1293,7 @@ script_install_services() {
 
 #Reinstalls the wine prefix
 script_install_prefix() {
-	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "inactive" ]]; then
+	if [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "active" ]] && [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "activating" ]] && [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" != "deactivating" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall Wine prefix) Wine prefix reinstallation commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
 		read -p "Are you sure you want to reinstall the wine prefix? (y/n): " REINSTALL_PREFIX
 		if [[ "$REINSTALL_PREFIX" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -1726,9 +1724,6 @@ script_install() {
 	
 	echo "Installing tmux configuration for server console and logs"
 	script_install_tmux_config
-	
-	echo "Installing update script"
-	script_install_update_script
 	
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-commands.service"
 	
