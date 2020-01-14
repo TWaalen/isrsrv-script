@@ -2,6 +2,7 @@ Update 2020-01-14
 
 -removed old script updating code
 -fixed rebuild_prefix function
+-fixed script update function (bug when multiple servers/scripts are updating at the same time)
 
 -------------------------
 
