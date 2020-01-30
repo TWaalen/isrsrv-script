@@ -120,8 +120,6 @@ Make it executable:
 
 `chmod +x ./isrsrv-script.bash`
 
-The script will ask you for your steam username and password and will store it in a configuration file for automatic updates. Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the two factor authentication code and breaks the auto update feature. Use Steam Guard via email.
-
 Sometime between the installation process you will be prompted for steam's two factor authentication code and after that steamcmd will not ask you for another code once it runs if you are using steam guard via email.
 
 -------------------------
