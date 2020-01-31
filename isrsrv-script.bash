@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202001310020"
+export VERSION="202001312016"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -11,10 +11,10 @@ if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the use
 else
 	if [[ "-install" == "$1" ]] || [[ "-install_packages" == "$1" ]]; then
 		echo "WARNING: Installation mode"
-		read -p "Please enter username (leave empty for arma):" USER #Enter desired username that will be used when creating the new user
+		read -p "Please enter username (leave empty for interstellar_rift):" USER #Enter desired username that will be used when creating the new user
 		USER=${USER:=interstellar_rift} #If no username was given, use default
 	else
-		echo "Error: This script, once installed, is meant to be used by the user it created and should not under any circumstances be used with sudo or by the root user for the $1 function. Only -install and -install_packages work with sudo/root. Log in to your created user (default: arma) with sudo -i -u arma and execute your script without root from the coresponding scripts folder."
+		echo "Error: This script, once installed, is meant to be used by the user it created and should not under any circumstances be used with sudo or by the root user for the $1 function. Only -install and -install_packages work with sudo/root. Log in to your created user (default: interstellar_rift) with sudo -i -u interstellar_rift and execute your script without root from the coresponding scripts folder."
 		exit 1
 	fi
 fi
@@ -37,7 +37,7 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 	EMAIL_SENDER=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_sender | cut -d = -f2) #Send emails from this address
 	EMAIL_RECIPIENT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_recipient | cut -d = -f2) #Send emails to this address
 	EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update | cut -d = -f2) #Send emails when server updates
-	EMAIL_UPDATE_SCRIPT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep discord_update_script | cut -d = -f2) #Send notification when the script updates
+	EMAIL_UPDATE_SCRIPT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update_script | cut -d = -f2) #Send notification when the script updates
 	EMAIL_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_ssk | cut -d = -f2) #Send emails for SSK.txt expiration
 	EMAIL_START=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_start | cut -d = -f2) #Send emails when the server starts up
 	EMAIL_STOP=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_stop | cut -d = -f2) #Send emails when the server shuts down
@@ -670,7 +670,7 @@ script_change_branch() {
 
 #Check for updates. If there are updates available, shut down the server, update it and restart it.
 script_update() {
-	if [[ "$STEAMCMDUID" == "not_stored" ]] && [[ "$STEAMCMDPSW" == "not_stored" ]]; then
+	if [[ "$STEAMCMDUID" == "disabled" ]] && [[ "$STEAMCMDPSW" == "disabled" ]]; then
 		while [[ "$STEAMCMDSUCCESS" != "0" ]]; do
 			read -p "Enter your Steam username: " STEAMCMDUID
 			echo ""
@@ -1439,7 +1439,7 @@ script_timer_one() {
 		script_save
 		script_sync
 		script_autobackup
-		if [[ "$STEAMCMDUID" != "not_stored" ]] && [[ "$STEAMCMDPSW" != "not_stored" ]]; then
+		if [[ "$STEAMCMDUID" != "disabled" ]] && [[ "$STEAMCMDPSW" != "disabled" ]]; then
 			script_update
 		fi
 		script_update_github
@@ -1463,7 +1463,7 @@ script_timer_two() {
 		script_crash_kill
 		script_save
 		script_sync
-		if [[ "$STEAMCMDUID" != "not_stored" ]] && [[ "$STEAMCMDPSW" != "not_stored" ]]; then
+		if [[ "$STEAMCMDUID" != "disabled" ]] && [[ "$STEAMCMDPSW" != "disabled" ]]; then
 			script_update
 		fi
 		script_update_github
@@ -1821,8 +1821,8 @@ script_install() {
 		echo 'username='"$STEAMCMDUID" > $SCRIPT_DIR/$SERVICE_NAME-config.conf
 		echo 'password='"$STEAMCMDPSW" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	else
-		echo 'username=not_stored' > $SCRIPT_DIR/$SERVICE_NAME-config.conf
-		echo 'password=not_stored' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+		echo 'username=disabled' > $SCRIPT_DIR/$SERVICE_NAME-config.conf
+		echo 'password=disabled' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	fi
 	echo 'tmpfs_enable='"$TMPFS_ENABLE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'beta_branch_enabled='"$BETA_BRANCH_ENABLED" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
