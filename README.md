@@ -63,7 +63,7 @@ This script creates a new non-sudo enabled user and installes the game in a fold
 
 - Ubuntu 19.10
 
-- Ubuntu 18.04 LTS
+- Ubuntu 18.04 LTS (see known issues)
 
 I will add suport for the next Ubuntu LTS version when it's released.
 
