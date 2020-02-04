@@ -1,3 +1,11 @@
+Update 2020-02-05
+
+- fixed -help asking for username and thinking it's in installation mode
+- fixed Arch Linux package installation
+- modified script displaying configuration is missing in installation mode
+
+-------------------------
+
 Update 2020-02-03
 
 - added support for Ubuntu 18.04 (see known issues)
