@@ -101,7 +101,7 @@ The script can, in theory run on any systemd-enabled distro. So if you are not u
 
 - cabextract
 
-- postfix (optional for email notifications)
+- postfix (optional for email notifications. When asked for configuration type you can select no configuration)
 
 - zip (optional but required if using the email feature)
 
@@ -125,7 +125,7 @@ Sometime between the installation process you will be prompted for steam's two f
 
 **Installation:**
 
-If you wish you can have the script install the required packages with (Only for Arch Linux & Ubuntu 19.10):
+If you wish you can have the script install the required packages with (Only for Arch Linux, Ubuntu 19.10 and Ubuntu 18.04LTS):
 
 `sudo ./isrsrv-script.bash -install_packages`
 
