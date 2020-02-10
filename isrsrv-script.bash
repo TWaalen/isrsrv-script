@@ -1537,11 +1537,34 @@ script_install_packages() {
 			#Get codename
 			UBUNTU_CODENAME=$(cat /etc/os-release | grep "^UBUNTU_CODENAME=" | cut -d = -f2)
 			
-			#Add wine repositroy and install packages
+			#Add i386 architecture support
 			sudo dpkg --add-architecture i386
+			
+			#Check codename and install config for installation
+			if [[ "$UBUNTU_CODENAME" == "bionic" ]]; then
+				cat > /etc/apt/sources.list <<- EOF
+				#### ubuntu eoan #########
+				deb http://archive.ubuntu.com/ubuntu eoan main restricted universe multiverse
+				EOF
+				
+				cat > /etc/apt/preferences.d/eoan.pref <<- EOF
+				Package: *
+				Pin: release n=$UBUNTU_CODENAME
+				Pin-Priority: 10
+				
+				Package: tmux
+				Pin: release n=eoan
+				Pin-Priority: 900
+				EOF
+			fi
+			
+			#Add wine repositroy and install packages
 			wget -nc https://dl.winehq.org/wine-builds/winehq.key
 			sudo apt-key add winehq.key
 			sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ $UBUNTU_CODENAME main"
+			
+			#Check for updates and update local repo database
+			sudo apt update
 			
 			#Install packages and enable services
 			sudo apt install --install-recommends winehq-staging

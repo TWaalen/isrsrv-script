@@ -1,3 +1,9 @@
+Update 2020-02-10
+
+- updated -install_packages function
+
+-------------------------
+
 Update 2020-02-05
 
 - fixed -help asking for username and thinking it's in installation mode
