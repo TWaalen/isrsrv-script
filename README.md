@@ -171,6 +171,8 @@ That should be it.
 | `-update` | Update the server, if the server is running it wil save it, shut it down, update it and restart it |
 | `-update_script` | Check github for script updates and update if newer version available |
 | `-update_script_force` | Get latest script from github and install it no matter what the version |
+| `-attach` | Attaches to the tmux session of the server |
+| `-attach_commands` | Attaches to the tmux session of the commands wrapper script |
 | `-status` | Display status of server |
 | `-install` | Installs all the needed files for the script to run, the wine prefix, systemd services and timers and the game |
 | `-install_packages` | Installs all the needed packages (Supports only Arch linux & Ubuntu 19.10 and onward) |
