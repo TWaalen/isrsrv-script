@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202002101108"
+export VERSION="202002271217"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -149,14 +149,14 @@ script_status() {
 	fi
 }
 
-#If the script variable is set to 0, the script won't issue any commands ran. It will just exit.
-script_enabled() {
-	script_logs
-	if [[ "$SCRIPT_ENABLED" == "0" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Script status) Server script is disabled" | tee -a "$LOG_SCRIPT"
-		script_status
-		exit 0
-	fi
+#Attaches to the server tmux session
+script_attach() {
+	tmux -L $USER-tmux.sock attach -t $NAME
+}
+
+#Attaches to the server commands script tmux session
+script_attach_commands() {
+	tmux -L $USER-commands-tmux.sock attach -t $NAME-Commands
 }
 
 #Disable all script services
@@ -835,8 +835,7 @@ script_install_alias(){
 	
 	if [[ "$INSTALL_BASHRC_ALIAS_STATE" == "1" ]]; then
 		cat >> /home/$USER/.bashrc <<- EOF
-			alias $SERVICE_NAME-server='tmux -L $USER-tmux.sock attach -t $NAME'
-			alias $SERVICE_NAME-commands='tmux -L $USER-commands-tmux.sock attach -t $NAME-Commands'
+			alias $SERVICE_NAME="/home/$USER/scripts/$SERVICE_NAME-script.bash"
 		EOF
 	fi
 	
@@ -1537,46 +1536,52 @@ script_install_packages() {
 			#Get codename
 			UBUNTU_CODENAME=$(cat /etc/os-release | grep "^UBUNTU_CODENAME=" | cut -d = -f2)
 			
-			#Add i386 architecture support
-			sudo dpkg --add-architecture i386
+			if [[ "$UBUNTU_CODENAME" == "bionic" || "$UBUNTU_CODENAME" == "eoan" ]]; then
+				#Add i386 architecture support
+				sudo dpkg --add-architecture i386
+				
+				#Check codename and install config for installation
+				if [[ "$UBUNTU_CODENAME" == "bionic" ]]; then
+					cat >> /etc/apt/sources.list <<- EOF
+					#### ubuntu eoan #########
+					deb http://archive.ubuntu.com/ubuntu eoan main restricted universe multiverse
+					EOF
+					
+					cat > /etc/apt/preferences.d/eoan.pref <<- EOF
+					Package: *
+					Pin: release n=$UBUNTU_CODENAME
+					Pin-Priority: 10
+					
+					Package: tmux
+					Pin: release n=eoan
+					Pin-Priority: 900
+					EOF
+				fi
 			
-			#Check codename and install config for installation
-			if [[ "$UBUNTU_CODENAME" == "bionic" ]]; then
-				cat > /etc/apt/sources.list <<- EOF
-				#### ubuntu eoan #########
-				deb http://archive.ubuntu.com/ubuntu eoan main restricted universe multiverse
-				EOF
+				#Add wine repositroy and install packages
+				wget -nc https://dl.winehq.org/wine-builds/winehq.key
+				sudo apt-key add winehq.key
+				sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ $UBUNTU_CODENAME main"
 				
-				cat > /etc/apt/preferences.d/eoan.pref <<- EOF
-				Package: *
-				Pin: release n=$UBUNTU_CODENAME
-				Pin-Priority: 10
+				#Check for updates and update local repo database
+				sudo apt update
 				
-				Package: tmux
-				Pin: release n=eoan
-				Pin-Priority: 900
-				EOF
+				#Install packages and enable services
+				sudo apt install --install-recommends winehq-staging
+				sudo apt install --install-recommends steamcmd
+				sudo apt install rsync cabextract unzip p7zip wget curl tmux postfix zip jq xvfb samba winbind
+				sudo systemctl enable smbd nmbd winbind
+				sudo systemctl start smbd nmbd winbind
+				
+				#Install winetricks
+				wget  https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
+				sudo mv winetricks /usr/local/bin/
+				sudo chmod +x /usr/local/bin/winetricks
+			else
+				echo "Error: This version of Ubuntu is not supported. Supported versions are: Ubuntu 18.04 LTS (Bionic Beaver), Ubuntu 19.10 (Disco Dingo)"
+				echo "Exiting"
+				exit 1
 			fi
-			
-			#Add wine repositroy and install packages
-			wget -nc https://dl.winehq.org/wine-builds/winehq.key
-			sudo apt-key add winehq.key
-			sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ $UBUNTU_CODENAME main"
-			
-			#Check for updates and update local repo database
-			sudo apt update
-			
-			#Install packages and enable services
-			sudo apt install --install-recommends winehq-staging
-			sudo apt install --install-recommends steamcmd
-			sudo apt install rsync cabextract unzip p7zip wget curl tmux postfix zip jq xvfb samba winbind
-			sudo systemctl enable smbd nmbd winbind
-			sudo systemctl start smbd nmbd winbind
-			
-			#Install winetricks
-			wget  https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
-			sudo mv winetricks /usr/local/bin/
-			sudo chmod +x /usr/local/bin/winetricks
 		fi
 			
 		if [[ "$DISTRO" == "arch" ]]; then
@@ -1637,6 +1642,8 @@ script_install() {
 	echo ""
 	sudo useradd -m -g users -s /bin/bash $USER
 	echo -en "$USER_PASS\n$USER_PASS\n" | sudo passwd $USER
+	
+	sudo chown -R "$USER":users "/home/$USER"
 	
 	echo ""
 	echo "You will now have to enter your Steam credentials. Exepct a prompt for a Steam guard code if you have it enabled."
@@ -1952,7 +1959,7 @@ script_install() {
 		mkdir -p "$BCKP_SRC_DIR"
 	fi
 	
-	chown -R $USER:users /home/$USER
+	sudo chown -R "$USER":users "/home/$USER"
 	
 	echo "Installation complete"
 	echo ""
@@ -2073,6 +2080,12 @@ case "$1" in
 	-status)
 		script_status
 		;;
+	-attach)
+		script_attach
+		;;
+	-attach_commands)
+		script_attach_commands
+		;;
 	-install_packages)
 		script_install_packages
 		;;
@@ -2148,7 +2161,7 @@ case "$1" in
 	echo ""
 	echo "For more detailed information, execute the script with the -help argument"
 	echo ""
-	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|ssk_check|ssk_install|install_aliases|rebuild_tmux_config|rebuild_commands|rebuild_services|rebuild_prefix|disable_services|enable_services|reload_services|update|update_script|update_script_force|status|install|install_packages}"
+	echo "Usage: $0 {start|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|ssk_check|ssk_install|install_aliases|rebuild_tmux_config|rebuild_commands|rebuild_services|rebuild_prefix|disable_services|enable_services|reload_services|update|update_script|update_script_force|attach|attach_commands|status|install|install_packages}"
 	exit 1
 	;;
 esac
