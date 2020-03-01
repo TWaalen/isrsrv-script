@@ -1,3 +1,12 @@
+Update 2020-03-01
+
+- fixed script log deletion
+- added game log deletion for logs that are 14 days old, this can be configured in the config file
+- added game dump deletion for dump files that are 14 days old, this can be configured in the config file
+- fixed AlunaCrashHandler.exe detection
+
+-------------------------
+
 Update 2020-02-27
 
 - fixed permissions issue when using -install function
