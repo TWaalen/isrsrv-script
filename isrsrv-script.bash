@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202002271217"
+export VERSION="202003011510"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -63,6 +63,8 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 
 	#Log configuration
 	LOG_DELOLD=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep log_delold= | cut -d = -f2) #Delete old logs.
+	LOG_GAME_DELOLD=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep log_game_delold= | cut -d = -f2) #Delete old game logs.
+	DUMP_GAME_DELOLD=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep dump_game_delold= | cut -d = -f2) #Delete old game logs.
 
 	#Script updates from github
 	SCRIPT_UPDATES_GITHUB=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep script_updates= | cut -d = -f2) #Get configuration for script updates.
@@ -100,6 +102,7 @@ BCKP_DEST="$BCKP_DIR/$(date +"%Y")/$(date +"%m")/$(date +"%d")" #How backups are
 
 #Log configuration
 export LOG_DIR="/home/$USER/logs/$(date +"%Y")/$(date +"%m")/$(date +"%d")"
+export LOG_DIR_ALL="/home/$USER/logs"
 export LOG_SCRIPT="$LOG_DIR/$SERVICE_NAME-script.log" #Script log
 export LOG_TMP="/tmp/$USER-$SERVICE_NAME-tmux.log"
 
@@ -126,10 +129,13 @@ script_logs() {
 script_del_logs() {
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old logs) Deleting old logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	#Delete old logs
-	find $LOG_DIR/* -mtime +$LOG_DELOLD -exec rm -rf {} \;
+	find $LOG_DIR_ALL/* -mtime +$LOG_DELOLD -delete
+	#Delete old game logs
+	find $BCKP_SRC_DIR/Logs/* -mtime +$LOG_DELOLD -delete
+	#Delete old game dumps
+	find $BCKP_SRC_DIR/Dumps/* -mtime +$LOG_DELOLD -delete
 	#Delete empty folders
-	#find $LOG_DIR -type d 2> /dev/null -empty -exec rm -rf {} \;
-	find $BCKP_DIR/ -type d -empty -delete
+	find $LOG_DIR_ALL/ -type d -empty -delete
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old logs) Deleting old logs complete." | tee -a "$LOG_SCRIPT"
 }
 
@@ -252,15 +258,17 @@ script_reload_services() {
 #If the aluna crash handler is running, kill it due to it freezing
 script_crash_kill() {
 	script_logs
-	if [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -gt "0" ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe detected. Killing the process." | tee -a "$LOG_SCRIPT"
-		kill $(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')
-		if [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -eq "" ]]; then
+	if [[ "$(ps ux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}' | head -1)" -gt "0" ]]; then
+		while [[ "$(ps ux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}' | head -1)" -gt "0" ]]; do
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe detected. Killing the process." | tee -a "$LOG_SCRIPT"
+			kill $(ps ux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}' | head -1)
+		done
+		if [[ "$(ps ux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}' | head -1)" -eq "" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe process killed." | tee -a "$LOG_SCRIPT"
-		elif [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -gt "0" ]]; then
+		elif [[ "$(ps ux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}' | head -1)" -gt "0" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Aluna Crash Handler) Failed to kill AlunaCrashHandler.exe process." | tee -a "$LOG_SCRIPT"
 		fi
-	elif [[ "$(ps aux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}')" -eq "" ]]; then
+	elif [[ "$(ps ux | grep -i "[A]lunaCrashHandler.exe" | awk '{print $2}' | head -1)" -eq "" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Aluna Crash Handler) AlunaCrashHandler.exe not detected. Server nominal." | tee -a "$LOG_SCRIPT"
 	fi
 }
@@ -576,14 +584,40 @@ script_restart() {
 	fi
 }
 
+#Deletes old game logs
+script_deloldgamelogs() {
+	script_logs
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game logs: $LOG_GAME_DELOLD days old." | tee -a "$LOG_SCRIPT"
+	#Check if running on tmpfs and delete game logs
+	if [[ "$TMPFS_ENABLE" == "1" ]]; then
+		#Delete old game logs on tmpfs
+		find "$TMPFS_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Logs/*" -mtime +$LOG_GAME_DELOLD -delete
+	fi
+	#Delete old game logs on hdd/ssd
+	find "$SRV_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Logs/*" -mtime +$LOG_GAME_DELOLD -delete
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game logs complete." | tee -a "$LOG_SCRIPT"
+}
+
+script_deloldgamedumps() {
+	script_logs
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game dumps: $LOG_GAME_DELOLD days old." | tee -a "$LOG_SCRIPT"
+	#Check if running on tmpfs and delete game dumps
+	if [[ "$TMPFS_ENABLE" == "1" ]]; then
+		#Delete old game dumps on tmpfs
+		find "$TMPFS_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Dumps/*" -mtime +$DUMP_GAME_DELOLD -delete
+	fi
+	#Delete old game dmps on hdd/ssd
+	find "$SRV_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Dumps/*" -mtime +$DUMP_GAME_DELOLD -delete
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game logs complete." | tee -a "$LOG_SCRIPT"
+}
+
 #Deletes old backups
 script_deloldbackup() {
 	script_logs
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old backup) Deleting old backups: $BCKP_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	# Delete old backups
-	find $BCKP_DIR/* -type f -mtime +$BCKP_DELOLD -exec rm {} \;
+	find $BCKP_DIR/* -type f -mtime +$BCKP_DELOLD -delete
 	# Delete empty folders
-	#find $BCKP_DIR/ -type d 2> /dev/null -empty -exec rm -rf {} \;
 	find $BCKP_DIR/ -type d -empty -delete
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old backup) Deleting old backups complete." | tee -a "$LOG_SCRIPT"
 }
@@ -1477,6 +1511,8 @@ script_timer_one() {
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Status) Server running." | tee -a "$LOG_SCRIPT"
 		script_del_logs
+		script_deloldgamelogs
+		script_deloldgamedumps
 		script_ssk_check
 		script_crash_kill
 		script_save
@@ -1502,6 +1538,8 @@ script_timer_two() {
 	elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE)" == "active" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Status) Server running." | tee -a "$LOG_SCRIPT"
 		script_del_logs
+		script_deloldgamelogs
+		script_deloldgamedumps
 		script_ssk_check
 		script_crash_kill
 		script_save
@@ -1917,6 +1955,8 @@ script_install() {
 	echo 'script_commands='"$COMMANDS_SCRIPT" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'bckp_delold=14' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'log_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'log_game_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+	echo 'dump_game_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
 	sudo chown -R $USER:users /home/$USER
 	
@@ -1981,14 +2021,19 @@ if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notificatio
 fi
 
 if [ "$EUID" -ne "0" ] && [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ]; then #Check if script executed as root, if not generate missing config fields
-	CONFIG_FIELDS="username,password,tmpfs_enable,beta_branch_enabled,beta_branch_name,email_sender,email_recipient,email_update,email_update_script,email_ssk,email_start,email_stop,email_crash,discord_update,discord_update_script,discord_ssk,discord_start,discord_stop,discord_crash,script_updates,script_commands,bckp_delold,log_delold"
+	CONFIG_FIELDS="username,password,tmpfs_enable,beta_branch_enabled,beta_branch_name,email_sender,email_recipient,email_update,email_update_script,email_ssk,email_start,email_stop,email_crash,discord_update,discord_update_script,discord_ssk,discord_start,discord_stop,discord_crash,script_updates,script_commands,bckp_delold,log_delold,log_game_delold,dump_game_delold"
 	IFS=","
 	for CONFIG_FIELD in $CONFIG_FIELDS; do
 		if ! grep -q $CONFIG_FIELD $SCRIPT_DIR/$SERVICE_NAME-config.conf; then
 			if [[ "$CONFIG_FIELD" == "bckp_delold" ]]; then
 				echo "$CONFIG_FIELD=14" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 			elif [[ "$CONFIG_FIELD" == "log_delold" ]]; then
-				echo "$CONFIG_FIELD=7" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+				echo "$CONFIG_FIELD=14" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+			elif [[ "$CONFIG_FIELD" == "log_game_delold" ]]; then
+				echo "$CONFIG_FIELD=14" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+			elif [[ "$CONFIG_FIELD" == "dump_game_delold" ]]; then
+				echo "$CONFIG_FIELD=14" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
+
 			else
 				echo "$CONFIG_FIELD=0" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 			fi
