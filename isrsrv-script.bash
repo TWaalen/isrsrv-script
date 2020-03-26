@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202003011510"
+export VERSION="202003261218"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -852,7 +852,7 @@ script_update() {
 }
 
 #Install aliases in .bashrc
-script_install_alias(){
+script_install_alias() {
 	if [ "$EUID" -ne "0" ]; then #Check if script executed as root and asign the username for the installation process, otherwise use the executing user
 		script_logs
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install .bashrc aliases) Installation of aliases in .bashrc commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
@@ -877,8 +877,8 @@ script_install_alias(){
 		if [[ "$INSTALL_BASHRC_ALIAS_STATE" == "1" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install .bashrc aliases) Installation of aliases in .bashrc complete. Re-log for the changes to take effect." | tee -a "$LOG_SCRIPT"
 			echo "Aliases:"
-			echo "$SERVICE_NAME-server = Attaches to the server console."
-			echo "$SERVICE_NAME-commands = Attaches to the commands wrapper script."
+			echo "$SERVICE_NAME -attach = Attaches to the server console."
+			echo "$SERVICE_NAME -attach_commands = Attaches to the commands wrapper script."
 		fi
 	fi
 }
@@ -1773,31 +1773,43 @@ script_install() {
 		read -p "Email notifications for game updates? (y/n): " POSTFIX_UPDATE_ENABLE
 			if [[ "$POSTFIX_UPDATE_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				POSTFIX_UPDATE="1"
+			else
+				POSTFIX_UPDATE="0"
 			fi
 		echo ""
-		read -p "Email notifications for script updates? (y/n): " POSTFIX_UPDATE_SCRIPT_ENABLE
+		read -p "Email notifications for script updates from github? (y/n): " POSTFIX_UPDATE_SCRIPT_ENABLE
 			if [[ "$POSTFIX_UPDATE_SCRIPT_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				POSTFIX_UPDATE_SCRIPT="1"
+			else
+				POSTFIX_UPDATE_SCRIPT="0"
 			fi
 		echo ""
 		read -p "Email notifications for SSK.txt expiration? (y/n): " POSTFIX_SSK_ENABLE
 			if [[ "$POSTFIX_SSK_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				POSTFIX_SSK="1"
+			else
+				POSTFIX_SSK="0"
 			fi
 		echo ""
 		read -p "Email notifications for server startup? (WARNING: this can be anoying) (y/n): " POSTFIX_CRASH_ENABLE
 			if [[ "$POSTFIX_CRASH_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				POSTFIX_START="1"
+			else
+				POSTFIX_START="0"
 			fi
 		echo ""
 		read -p "Email notifications for server shutdown? (WARNING: this can be anoying) (y/n): " POSTFIX_CRASH_ENABLE
 			if [[ "$POSTFIX_CRASH_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				POSTFIX_STOP="1"
+			else
+				POSTFIX_STOP="0"
 			fi
 		echo ""
 		read -p "Email notifications for crashes? (y/n): " POSTFIX_CRASH_ENABLE
 			if [[ "$POSTFIX_CRASH_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				POSTFIX_CRASH="1"
+			else
+				POSTFIX_CRASH="0"
 			fi
 		if [[ "$POSTFIX_CONFIGURED" =~ ^([nN][oO]|[nN])$ ]]; then
 			echo ""
@@ -1826,8 +1838,9 @@ script_install() {
 	elif [[ "$POSTFIX_ENABLE" =~ ^([nN][oO]|[nN])$ ]]; then
 		POSTFIX_SENDER="none"
 		POSTFIX_RECIPIENT="none"
-		POSTFIX_SSK="0"
 		POSTFIX_UPDATE="0"
+		POSTFIX_UPDATE_SCRIPT="0"
+		POSTFIX_SSK="0"
 		POSTFIX_START="0"
 		POSTFIX_STOP="0"
 		POSTFIX_CRASH="0"
@@ -1841,38 +1854,54 @@ script_install() {
 		echo "EACH ONE HAS TO BE IN IT'S OWN LINE!"
 		echo ""
 		read -p "Enter your first webhook for the server: " DISCORD_WEBHOOK
+		if [[ "$DISCORD_WEBHOOK" == "" ]]; then
+			DISCORD_WEBHOOK="none"
+		fi
 		echo ""
 		read -p "Discord notifications for game updates? (y/n): " DISCORD_UPDATE_ENABLE
 			if [[ "$DISCORD_UPDATE_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				DISCORD_UPDATE="1"
+			else
+				DISCORD_UPDATE="0"
 			fi
 		echo ""
-		read -p "Discord notifications for game updates? (y/n): " DISCORD_UPDATE_SCRIPT_ENABLE
+		read -p "Discord notifications for script updates from github? (y/n): " DISCORD_UPDATE_SCRIPT_ENABLE
 			if [[ "$DISCORD_UPDATE_SCRIPT_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				DISCORD_UPDATE_SCRIPT="1"
+			else
+				DISCORD_UPDATE_SCRIPT="0"
 			fi
 		echo ""
 		read -p "Discord notifications for SSK.txt expiration? (y/n): " DISCORD_SSK_ENABLE
 			if [[ "$DISCORD_SSK_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				DISCORD_SSK="1"
+			else
+				DISCORD_SSK="0"
 			fi
 		echo ""
 		read -p "Discord notifications for server startup? (y/n): " DISCORD_START_ENABLE
 			if [[ "$DISCORD_START_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				DISCORD_START="1"
+			else
+				DISCORD_START="0"
 			fi
 		echo ""
 		read -p "Discord notifications for server shutdown? (y/n): " DISCORD_STOP_ENABLE
 			if [[ "$DISCORD_STOP_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				DISCORD_STOP="1"
+			else
+				DISCORD_STOP="0"
 			fi
 		echo ""
 		read -p "Discord notifications for crashes? (y/n): " DISCORD_CRASH_ENABLE
 			if [[ "$DISCORD_CRASH_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				DISCORD_CRASH="1"
+			else
+				DISCORD_CRASH="0"
 			fi
 	elif [[ "$DISCORD_ENABLE" =~ ^([nN][oO]|[nN])$ ]]; then
 		DISCORD_UPDATE="0"
+		DISCORD_UPDATE_SCRIPT="0"
 		DISCORD_SSK="0"
 		DISCORD_START="0"
 		DISCORD_STOP="0"
@@ -1958,7 +1987,9 @@ script_install() {
 	echo 'log_game_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'dump_game_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
-	sudo chown -R $USER:users /home/$USER
+	echo "$DISCORD_WEBHOOK" > $SCRIPT_DIR/discord_webhooks.txt
+	
+	sudo chown -R "$USER":users "/home/$USER"
 	
 	echo "Generating wine prefix"
 	
@@ -2012,7 +2043,7 @@ script_install() {
 }
 
 #Do not allow for another instance of this script to run to prevent data loss
-if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]]; then
+if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]] && [[ "-attach" != "$1" ]] && [[ "-status" != "$1" ]]; then
 	SCRIPT_PID_CHECK=$(basename -- "$0")
 	if pidof -x "$SCRIPT_PID_CHECK" -o $$ > /dev/null; then
 		echo "An another instance of this script is already running, please clear all the sessions of this script before starting a new session"
