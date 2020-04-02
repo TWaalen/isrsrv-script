@@ -3,6 +3,10 @@ Bash script for running Interstellar Rift on a linux server
 
 -------------------------
 
+# WARNING: THIS IS THE LEGACY BRANCH. FOR NEW INSTALLATIONS USE MASTER!
+
+-------------------------
+
 # What does this script do?
 
 This script creates a new non-sudo enabled user and installes the game in a folder called server in the user's home folder. It also installs systemd services for starting and shutting down the game server when the computer starts up, shuts down or reboots and also installs systemd timers so the script is executed on timed intervals (every 15 minutes) to do it's work like automatic game updates, backups and syncing from ramdisk to hdd. It will also create a config file in the script folder that will save the configuration you defined between the installation process. The reason for user creation is to limit the script's privliges so it CAN NOT be used with sudo when handeling the game server. Sudo is only needed for installing the script (for user creation) and installing packages (if the script supports the distro you are running).
