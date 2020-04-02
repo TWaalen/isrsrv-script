@@ -1,3 +1,9 @@
+Update 2020-04-02
+
+- created legacy branch so old installations will not be corrupted when the new server addition (server multi instance) update rolls out. Legacy branch will only contain major bug fixes
+
+-------------------------
+
 Update 2020-03-26
 
 - fixed config file generation during installation for email and discord notifications
