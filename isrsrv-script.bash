@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202004021955"
+export VERSION="202004022000"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -2076,7 +2076,7 @@ case "$1" in
 	-help)
 		echo -e "${CYAN}Time: $(date +"%Y-%m-%d %H:%M:%S") ${NC}"
 		echo -e "${CYAN}$NAME server script by 7thCore${NC}"
-		echo "Version: $VERSION"
+		echo "Version: $VERSION - Legacy"
 		echo ""
 		echo -e "${LIGHTRED}The script will ask you for your steam username and password and will store it in a configuration file for automatic updates.${NC}"
 		echo -e "${LIGHTRED}Also if you have Steam Guard on your mobile phone activated, disable it because steamcmd always asks for the${NC}"
