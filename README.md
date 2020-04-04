@@ -31,6 +31,8 @@ This script creates a new non-sudo enabled user and installes the game in a fold
 
 - shutdown gracefully on os shutdown
 
+- can run multiple servers
+
 - script auto update from github (optional)
 
 - send email notifications when SSK.txt near end of life (optional)
@@ -137,9 +139,25 @@ You can also install bash aliases to make your life easier by logging in to the 
 
 `./isrsrv-script.bash -install_aliases`
 
-After the installation finishes log in to the newly created user and set `AutoSaveDelay` and `BackupSaveDelay` in server.json to `0` to disable the integrated saves and backups. The script will take care of saving and backups. This is required if using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd. Also paste in your SSK.txt, fine tune your game configuration and then reboot the operating system and the service files will start the game server automaticly on boot. 
+After the installation finishes log in to the newly created user and set `AutoSaveDelay` and `BackupSaveDelay` in server_01.json to `0` to disable the integrated saves and backups. The script will take care of saving and backups. This is required if using the script so the game won't save mid script-backup or sync from RamDisk to hdd/ssd. Also paste in your SSK.txt, fine tune your game configuration and then reboot the operating system and the service files will start the game server automaticly on boot. 
 
 That should be it.
+
+-------------------------
+
+# Add or remove additional servers
+
+The script takes full advantage of the -serverAddition argument of Interstellar Rift. This means you can start additional server from the same installation and the script will take care of all of them. To add additional server type the following command:
+
+`-add_server`
+
+You will be promped to enter a server number. These can range from 1-99 (single digit numbers must have a 0 before them, for example 09). Once the server is enabled it will automaticly start as the first server. Server 01 is the default.
+
+To remove a server (this just turns off the service without deleting any data/saves) you can execute the following command:
+
+`-remove_server`
+
+You will be promped to enter a server number. These can range from 1-99 (single digit numbers must have a 0 before them, for example 09).
 
 -------------------------
 
@@ -148,9 +166,11 @@ That should be it.
 | Command | Description |
 | ------- | ----------- |
 | `-help` | Prints a list of commands and their description |
-| `-start` | Start the server |
-| `-stop` | Stop the server |
-| `-restart` | Restart the server |
+| `-add_server` | Adds a server to the active server list. |
+| `-remove_server` | Removes a server from the active server list. |
+| `-start <server number>` | Start the server. If the server number is not specified the function will start all servers |
+| `-stop <server number>` | Stop the server. If the server number is not specified the function will stop all servers |
+| `-restart <server number>` | Restart the server. If the server number is not specified the function will restart all servers |
 | `-save` | Issue the save command to the server |
 | `-sync` | Sync from tmpfs to hdd/ssd |
 | `-backup` | Backup files, if server running or not |
@@ -166,14 +186,14 @@ That should be it.
 | `-rebuild_services` | Reinstalls the systemd services from the script. Usefull if any service updates occoured |
 | `-rebuild_prefix` | Reinstalls the wine prefix. Usefull if any wine prefix updates occoured |
 | `-disable_services` | Disables all services. The server and the script will not start up on boot anymore |
-| `-enable_services` | Enables all services dependant on the configuration file of the script |
+| `-enable_services <server number>` | Enables all services dependant on the configuration file of the script |
 | `-reload_services` | Reloads all services, dependant on the configuration file |
 | `-update` | Update the server, if the server is running it wil save it, shut it down, update it and restart it |
 | `-update_script` | Check github for script updates and update if newer version available |
 | `-update_script_force` | Get latest script from github and install it no matter what the version |
-| `-attach` | Attaches to the tmux session of the server |
-| `-attach_commands` | Attaches to the tmux session of the commands wrapper script |
-| `-status` | Display status of server |
+| `-attach <server number>` | Attaches to the tmux session of the specified server |-
+| `-attach_commands <server number>` | Attaches to the tmux session of the commands wrapper script for the specified server |
+| `-status` | Display status of all enabled server |
 | `-install` | Installs all the needed files for the script to run, the wine prefix, systemd services and timers and the game |
 | `-install_packages` | Installs all the needed packages (Supports only Arch linux & Ubuntu 19.10 and onward) |
 
@@ -184,3 +204,40 @@ That should be it.
 | Issue | Resolution |
 | ----- | ---------- |
 | Ubuntu 18.04 LTS Support (Script can't enable services during installation) | This version of Ubuntu has a bug in it's systemd component, meaning the script CAN NOT enable the services required for the game to start up after boot. You will have to do this manually by rebooting the os and logging in with the username you designated at the beginning of the install procedure then execute the script with the `-enable_services` argument. |
+
+-------------------------
+
+# How to convert from legacy to the new multi-instance version:
+
+Due to a lot of rewriting of core functions the old version of the script was moved to the legacy branch. All script installations with auto updates enabled have recieved an update co continue checking for updates from the legacy branch. If you want to convert to the new multi-instance version follow this guide:
+
+- shutdown the server
+
+- navigate to the folder /home/$USER/.config/systemd/user and delete the following:
+  isrsrv--mkdir-tmpfs.service, isrsrv-tmpfs.service, isrsrv.service
+
+- delete the script from the scripts folder
+
+- download the new script version and copy it to the script folder
+
+- make it executable with chmod +x ./home/$USER/scripts/isrsrv-script.bash
+
+- execute the script with -rebuild_services
+
+- execute the script with -reload_services
+
+- navigate to the InterstellarRift application data and rename the following files and folders:
+
+	- server to server_01
+	
+	- userdb to userdb_01
+	
+	- workshop to workshop_01
+	
+	- server.json to server_01.json
+	
+- execute the script with the -add_server argument and add server 01
+
+- start the server
+
+-------------------------

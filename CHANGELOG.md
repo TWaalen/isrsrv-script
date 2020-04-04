@@ -1,6 +1,8 @@
-Update 2020-04-02
+Update 2020-04-04
 
-- created legacy branch so old installations will not be corrupted when the new server addition (server multi instance) update rolls out. Legacy branch will only contain major bug fixes
+- added multi-instance support
+- added -add_server argumant to add more server instances
+- added -remove_server argument to remove server instances
 
 -------------------------
 
