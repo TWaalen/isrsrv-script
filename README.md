@@ -179,6 +179,7 @@ You will be promped to enter a server number. These can range from 1-99 (single 
 | `-delete_save` | Delete the server's save game with the option for deleting/keeping the server.json and SSK.txt files |
 | `-change_branch` | Changes the game branch in use by the server (public,experimental,legacy and so on) |
 | `-ssk_check` | Checks the SSK's creation/modification date and displays a warning if nearing expiration |
+| `-ssk_monitor` | Monitors SSK notifications in server consoles for a given time specified in the script config |
 | `-ssk_install` | Installs new SSK.txt file. Your new SSK.txt needs to be in /home/$USER folder before using this |
 | `-install_aliases` | Installs .bashrc aliases for easy access to the server tmux session |
 | `-rebuild_tmux_config` | Reinstalls the tmux configuration file from the script. Usefull if any tmux configuration updates occoured |
@@ -213,12 +214,14 @@ Due to a lot of rewriting of core functions the old version of the script was mo
 
 - shutdown the server
 
+- execute the script with -disable_services
+
 - navigate to the folder /home/$USER/.config/systemd/user and delete the following:
-  isrsrv--mkdir-tmpfs.service, isrsrv-tmpfs.service, isrsrv.service
+  isrsrv-mkdir-tmpfs.service, isrsrv-tmpfs.service, isrsrv.service
 
 - delete the script from the scripts folder
 
-- download the new script version and copy it to the script folder
+- download the new script version and copy it to the scripts folder
 
 - make it executable with chmod +x ./home/$USER/scripts/isrsrv-script.bash
 
@@ -237,6 +240,8 @@ Due to a lot of rewriting of core functions the old version of the script was mo
 	- server.json to server_01.json
 	
 - execute the script with the -add_server argument and add server 01
+
+- execute the script with -enable_services
 
 - start the server
 

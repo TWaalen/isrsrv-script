@@ -1,3 +1,11 @@
+Update 2020-04-05
+
+- added multi-instance support for commands wrapper script
+- added SSK monitor tool to monitor the server console for SSK notifications
+- added SSK monitor and save function timeout configurations to script config file
+- fixed enable and disable services function
+- fixed tmux rebuild function
+
 Update 2020-04-04
 
 - added multi-instance support
