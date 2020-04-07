@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202004051126"
+export VERSION="202004062152"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -127,18 +127,22 @@ script_logs() {
 	fi
 }
 
-#Deletes old logs
-script_del_logs() {
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old logs) Deleting old logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
+#Deletes old files
+script_remove_old_files() {
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Beginning removal of old files." | tee -a "$LOG_SCRIPT"
 	#Delete old logs
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing old script logs: $LOG_DELOLD days old." | tee -a "$LOG_SCRIPT"
 	find $LOG_DIR_ALL/* -mtime +$LOG_DELOLD -delete
 	#Delete old game logs
-	find $BCKP_SRC_DIR/Logs/* -mtime +$LOG_DELOLD -delete
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing old game logs: $LOG_GAME_DELOLD days old." | tee -a "$LOG_SCRIPT"
+	find $BCKP_SRC_DIR/Logs/* -mtime +$LOG_GAME_DELOLD -delete
 	#Delete old game dumps
-	find $BCKP_SRC_DIR/Dumps/* -mtime +$LOG_DELOLD -delete
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing old dump files: $DUMP_GAME_DELOLD days old." | tee -a "$LOG_SCRIPT"
+	find $BCKP_SRC_DIR/Dumps/* -mtime +$DUMP_GAME_DELOLD -delete
 	#Delete empty folders
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removing empty script log folders." | tee -a "$LOG_SCRIPT"
 	find $LOG_DIR_ALL/ -type d -empty -delete
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old logs) Deleting old logs complete." | tee -a "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove old files) Removal of old files complete." | tee -a "$LOG_SCRIPT"
 }
 
 #Prints out if the server is running
@@ -164,7 +168,7 @@ script_status() {
 }
 
 script_add_server() {
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Add server instance) User adding new server instance" | tee -a "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Add server instance) User adding new server instance." | tee -a "$LOG_SCRIPT"
 	read -p "Are you sure you want to add a server instance? (y/n): " ADD_SERVER_INSTANCE
 	if [[ "$ADD_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		echo ""
@@ -184,12 +188,12 @@ script_add_server() {
 		fi
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Add server instance) Server instance $SERVER_INSTANCE successfully added." | tee -a "$LOG_SCRIPT"
 	else
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Add server instance) User canceled adding new server instance" | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Add server instance) User canceled adding new server instance." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
 script_remove_server() {
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) User started removal of server instance" | tee -a "$LOG_SCRIPT"
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) User started removal of server instance." | tee -a "$LOG_SCRIPT"
 	read -p "Are you sure you want to remove a server instance? (y/n): " REMOVE_SERVER_INSTANCE
 	if [[ "$REMOVE_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		echo ""
@@ -207,7 +211,7 @@ script_remove_server() {
 		fi
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) Server instance $SERVER_INSTANCE successfully added." | tee -a "$LOG_SCRIPT"
 	else
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) User canceled removal of server instance" | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) User canceled removal of server instance." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
@@ -513,7 +517,7 @@ script_send_notification_stop_complete() {
 	fi
 	if [[ "$DISCORD_STOP" == "1" ]]; then
 		while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 complete\"}" "$DISCORD_WEBHOOK"
+			curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 complete.\"}" "$DISCORD_WEBHOOK"
 		done < $SCRIPT_DIR/discord_webhooks.txt
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Stop) Server shutdown for $1 complete." | tee -a "$LOG_SCRIPT"
@@ -618,6 +622,8 @@ script_ssk_monitor() {
 						touch $SCRIPT_DIR/ssk_disable_notifications.txt
 					fi
 					break
+				else
+					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening for SSK notifications on server $SERVER_NUMBER complete. Server nominal." | tee -a "$LOG_SCRIPT"
 				fi
 			done < <(tail -n1 -f /tmp/$USER-$SERVICE_NAME-$SERVER_NUMBER-tmux.log)'
 			if [ $? -eq 124 ]; then
@@ -795,33 +801,6 @@ script_restart() {
 			sleep 1
 		fi
 	fi
-}
-
-#Deletes old game logs
-script_deloldgamelogs() {
-	script_logs
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game logs: $LOG_GAME_DELOLD days old." | tee -a "$LOG_SCRIPT"
-	#Check if running on tmpfs and delete game logs
-	if [[ "$TMPFS_ENABLE" == "1" ]]; then
-		#Delete old game logs on tmpfs
-		find "$TMPFS_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Logs/*" -mtime +$LOG_GAME_DELOLD -delete
-	fi
-	#Delete old game logs on hdd/ssd
-	find "$SRV_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Logs/*" -mtime +$LOG_GAME_DELOLD -delete
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game logs complete." | tee -a "$LOG_SCRIPT"
-}
-
-script_deloldgamedumps() {
-	script_logs
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game dumps: $LOG_GAME_DELOLD days old." | tee -a "$LOG_SCRIPT"
-	#Check if running on tmpfs and delete game dumps
-	if [[ "$TMPFS_ENABLE" == "1" ]]; then
-		#Delete old game dumps on tmpfs
-		find "$TMPFS_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Dumps/*" -mtime +$DUMP_GAME_DELOLD -delete
-	fi
-	#Delete old game dmps on hdd/ssd
-	find "$SRV_DIR/drive_c/users/$USER/Application Data/InterstellarRift/Dumps/*" -mtime +$DUMP_GAME_DELOLD -delete
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete old game logs) Deleting old game logs complete." | tee -a "$LOG_SCRIPT"
 }
 
 #Deletes old backups
@@ -1897,9 +1876,7 @@ script_timer_one() {
 	done
 	
 	if [ $RUNNING_SERVERS -gt "0" ]; then
-		script_del_logs
-		script_deloldgamelogs
-		script_deloldgamedumps
+		script_remove_old_files
 		script_ssk_check
 		script_ssk_monitor
 		script_crash_kill
@@ -1934,9 +1911,7 @@ script_timer_two() {
 	done
 	
 	if [ $RUNNING_SERVERS -gt "0" ]; then
-		script_del_logs
-		script_deloldgamelogs
-		script_deloldgamedumps
+		script_remove_old_files
 		script_ssk_check
 		script_ssk_monitor
 		script_crash_kill
@@ -2026,7 +2001,7 @@ script_install_packages() {
 		echo "Package installation complete."
 	else
 		echo "os-release file not found. Is this distro supported?"
-		echo "This script currently supports Arch Linux and Ubuntu 19.10"
+		echo "This script currently supports Arch Linux, Ubuntu 18.04 LTS (Bionic Beaver), Ubuntu 19.10 (Disco Dingo)"
 		exit 1
 	fi
 }
