@@ -2308,6 +2308,11 @@ script_install() {
 	echo "Installing service files"
 	script_install_services
 	
+	echo "Creating folder structure for server..."
+	mkdir -p /home/$USER/{backups,logs,scripts,server,updates}
+	mkdir -p /home/$USER/scripts/tmux_config
+	cp "$(readlink -f $0)" $SCRIPT_DIR
+	chmod +x $SCRIPT_DIR/$SCRIPT_NAME
 	sudo chown -R $USER:users /home/$USER
 	
 	echo "Enabling services"
@@ -2328,12 +2333,6 @@ script_install() {
 		su - $USER -c "systemctl --user enable $SERVICE_NAME@01.service"
 		echo "$SERVICE_NAME@01.service" > $SCRIPT_DIR/$SERVICE_NAME-server-list.txt
 	fi
-	
-	echo "Creating folder structure for server..."
-	mkdir -p /home/$USER/{backups,logs,scripts,server,updates}
-	mkdir -p /home/$USER/scripts/tmux_config
-	cp "$(readlink -f $0)" $SCRIPT_DIR
-	chmod +x $SCRIPT_DIR/$SCRIPT_NAME
 	
 	if [[ "$COMMANDS_SCRIPT" == "1" ]]; then
 		su - $USER -c "systemctl --user enable $SERVICE_NAME-commands@1.service"
