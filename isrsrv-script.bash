@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202004101006"
+export VERSION="202004101342"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -209,7 +209,7 @@ script_remove_server() {
 		if [[ "$STOP_SERVER_INSTANCE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 			systemctl --user stop $SERVICE@$SERVER_INSTANCE.service
 		fi
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) Server instance $SERVER_INSTANCE successfully added." | tee -a "$LOG_SCRIPT"
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) Server instance $SERVER_INSTANCE successfully removed." | tee -a "$LOG_SCRIPT"
 	else
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Remove server instance) User canceled removal of server instance." | tee -a "$LOG_SCRIPT"
 	fi
@@ -224,7 +224,7 @@ script_attach() {
 		if [ $? == 0 ]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach) User attached to server session with ID: $1" | tee -a "$LOG_SCRIPT"
 			tmux -L $USER-$1-tmux.sock attach -t $NAME
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) User deattached to commands script session with ID: $1" | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) User deattached from server session with ID: $1" | tee -a "$LOG_SCRIPT"
 		else
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) Failed to attach to server session with ID: $1" | tee -a "$LOG_SCRIPT"
 		fi
@@ -240,7 +240,7 @@ script_attach_commands() {
 		if [ $? == 0 ]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) User attached to commands script session with ID: $1" | tee -a "$LOG_SCRIPT"
 			tmux -L $USER-$1-commands-tmux.sock attach -t $NAME-$1-Commands
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) User deattached to commands script session with ID: $1" | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) User deattached from commands script session with ID: $1" | tee -a "$LOG_SCRIPT"
 		else
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) Failed to attach to commands script session with ID: $1" | tee -a "$LOG_SCRIPT"
 		fi
@@ -660,7 +660,7 @@ script_start() {
 				sleep 1
 			elif [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "failed" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server $SERVER_NUMBER failed to activate. See systemctl --user status $SERVER_SERVICE for details." | tee -a "$LOG_SCRIPT"
-				read -p "Do you still want to start the server?: (y/n)" FORCE_START
+				read -p "Do you still want to start the server? (y/n): " FORCE_START
 				if [[ "$FORCE_START" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 					systemctl --user start $SERVER_SERVICE
 					sleep 1
@@ -2313,6 +2313,7 @@ script_install() {
 	mkdir -p /home/$USER/scripts/tmux_config
 	cp "$(readlink -f $0)" $SCRIPT_DIR
 	chmod +x $SCRIPT_DIR/$SCRIPT_NAME
+	touch $SCRIPT_DIR/$SERVICE_NAME-server-list.txt
 	sudo chown -R $USER:users /home/$USER
 	
 	echo "Enabling services"
@@ -2322,8 +2323,6 @@ script_install() {
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-1.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-2.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-3.timer"
-	
-	touch $SCRIPT_DIR/$SERVICE_NAME-server-list.txt
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		su - $USER -c "systemctl --user enable $SERVICE_NAME-sync-tmpfs.service"
