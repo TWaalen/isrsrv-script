@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202004062152"
+export VERSION="202004101006"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -1602,7 +1602,7 @@ script_install_services() {
 		WantedBy=default.target
 		EOF
 		
-		cat > /home/$USER/.config/systemd/user/$SERVICE@.service <<- EOF
+		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME@.service <<- EOF
 		[Unit]
 		Description=$NAME Server Service
 		After=network.target
@@ -2317,6 +2317,8 @@ script_install() {
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-1.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-2.timer"
 	su - $USER -c "systemctl --user enable $SERVICE_NAME-timer-3.timer"
+	
+	touch $SCRIPT_DIR/$SERVICE_NAME-server-list.txt
 	
 	if [[ "$TMPFS" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		su - $USER -c "systemctl --user enable $SERVICE_NAME-sync-tmpfs.service"
