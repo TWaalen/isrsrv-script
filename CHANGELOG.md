@@ -1,3 +1,12 @@
+Update 2020-04-24
+
+- added Ubuntu 20.04 LTS support
+- added -diag argument for quick and easy basic script diagnostics
+- added -verify argument for server files verification
+- added -start_no_err argument for starting a server in failed state without prompts 
+
+-------------------------
+
 Update 2020-04-02
 
 - created legacy branch so old installations will not be corrupted when the new server addition (server multi instance) update rolls out. Legacy branch will only contain major bug fixes
