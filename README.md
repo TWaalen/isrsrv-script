@@ -156,6 +156,7 @@ That should be it.
 | `-help` | Prints a list of commands and their description |
 | `-diag` | Prints out package versions and if script files are installed |
 | `-start` | Start the server |
+| `-start_no_err` | Start the server but don't require confimation if in failed state |
 | `-stop` | Stop the server |
 | `-restart` | Restart the server |
 | `-save` | Issue the save command to the server |
