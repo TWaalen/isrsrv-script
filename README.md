@@ -65,6 +65,8 @@ This script creates a new non-sudo enabled user and installes the game in a fold
 
 - Arch Linux
 
+- Ubuntu 20.04 LTS
+
 - Ubuntu 19.10
 
 - Ubuntu 18.04 LTS (see known issues)
@@ -152,6 +154,7 @@ That should be it.
 | Command | Description |
 | ------- | ----------- |
 | `-help` | Prints a list of commands and their description |
+| `-diag` | Prints out package versions and if script files are installed |
 | `-start` | Start the server |
 | `-stop` | Stop the server |
 | `-restart` | Restart the server |
@@ -173,6 +176,7 @@ That should be it.
 | `-enable_services` | Enables all services dependant on the configuration file of the script |
 | `-reload_services` | Reloads all services, dependant on the configuration file |
 | `-update` | Update the server, if the server is running it wil save it, shut it down, update it and restart it |
+| `-verify` | Verifiy game server files, if the server is running it will save it, shut it down, verify it and restart it |
 | `-update_script` | Check github for script updates and update if newer version available |
 | `-update_script_force` | Get latest script from github and install it no matter what the version |
 | `-attach` | Attaches to the tmux session of the server |
