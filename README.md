@@ -63,6 +63,8 @@ This script creates a new non-sudo enabled user and installes the game in a fold
 
 - Arch Linux
 
+- Ubuntu 20.04 LTS
+
 - Ubuntu 19.10
 
 - Ubuntu 18.04 LTS (see known issues)
@@ -166,9 +168,11 @@ You will be promped to enter a server number. These can range from 1-99 (single 
 | Command | Description |
 | ------- | ----------- |
 | `-help` | Prints a list of commands and their description |
+| `-diag` | Prints out package versions and if script files are installed |
 | `-add_server` | Adds a server to the active server list. |
 | `-remove_server` | Removes a server from the active server list. |
 | `-start <server number>` | Start the server. If the server number is not specified the function will start all servers |
+| `-start_no_err <server number>` | Start the server but don't require confimation if in failed state |
 | `-stop <server number>` | Stop the server. If the server number is not specified the function will stop all servers |
 | `-restart <server number>` | Restart the server. If the server number is not specified the function will restart all servers |
 | `-save` | Issue the save command to the server |
@@ -190,6 +194,7 @@ You will be promped to enter a server number. These can range from 1-99 (single 
 | `-enable_services <server number>` | Enables all services dependant on the configuration file of the script |
 | `-reload_services` | Reloads all services, dependant on the configuration file |
 | `-update` | Update the server, if the server is running it wil save it, shut it down, update it and restart it |
+| `-verify` | Verifiy game server files, if the server is running it will save it, shut it down, verify it and restart it |
 | `-update_script` | Check github for script updates and update if newer version available |
 | `-update_script_force` | Get latest script from github and install it no matter what the version |
 | `-attach <server number>` | Attaches to the tmux session of the specified server |-

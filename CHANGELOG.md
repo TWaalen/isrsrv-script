@@ -1,3 +1,12 @@
+Update 2020-04-24
+
+- added Ubuntu 20.04 LTS support
+- added -diag argument for quick and easy basic script diagnostics
+- added -verify argument for server files verification
+- added -start_no_err argument for starting a server in failed state without prompts 
+
+-------------------------
+
 Update 2020-04-05
 
 - added multi-instance support for commands wrapper script
