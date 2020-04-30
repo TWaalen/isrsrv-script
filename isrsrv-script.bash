@@ -570,17 +570,18 @@ script_save() {
 			while read line; do
 				if [[ "$line" == *"[Server]: Save completed."* ]] && [[ "$line" != *"[All]:"* ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER has been completed." | tee -a "$LOG_SCRIPT"
-					break
+					exit 0
 				elif [[ "$line" == *"INFO: Galaxy is already saving!"* ]] && [[ "$line" != *"[All]:"* ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save loop on server $SERVER_NUMBER detected. Restarting..." | tee -a "$LOG_SCRIPT"
-					script_restart $SERVER_NUMBER
-					break
+					exit 1
 				else
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER is in progress. Please wait..."
 				fi
 			done < <(tail -n1 -f /tmp/$USER-$SERVICE_NAME-$SERVER_NUMBER-tmux.log)'
 			if [ $? -eq 124 ]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save time limit for server $SERVER_NUMBER exceeded."
+			elif [ $? -eq 1 ]; then
+				script_restart $SERVER_NUMBER
 			fi
 		fi
 	done
