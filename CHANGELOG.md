@@ -1,3 +1,8 @@
+Update 2020-05-02
+
+- updated Ubuntu 20.04 LTS support (wine repo)
+- fixed save function to correctly detect galaxy already saving bug
+
 Update 2020-04-24
 
 - added Ubuntu 20.04 LTS support
