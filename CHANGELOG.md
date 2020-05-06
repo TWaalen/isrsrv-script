@@ -1,7 +1,16 @@
+Update 2020-05-06
+
+- fixed save function not restarting the server if the infinite save bug is detected
+- fixed ssk check function not sending email and discord message if ssk expires
+
+-------------------------
+
 Update 2020-05-02
 
 - updated Ubuntu 20.04 LTS support (wine repo)
 - fixed save function to correctly detect galaxy already saving bug
+
+-------------------------
 
 Update 2020-04-24
 
@@ -19,6 +28,8 @@ Update 2020-04-05
 - added SSK monitor and save function timeout configurations to script config file
 - fixed enable and disable services function
 - fixed tmux rebuild function
+
+-------------------------
 
 Update 2020-04-04
 
