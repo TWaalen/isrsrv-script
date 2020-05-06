@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202005061330"
+export VERSION="202005061527"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -608,7 +608,7 @@ script_ssk_monitor() {
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening for SSK notifications on server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
-			LOOP_TIMEOUT=$(date -ud "$TIMEOUT second" +%s)
+			LOOP_TIMEOUT=$(date -ud "$TIMEOUT_SSK second" +%s)
 			while read line; do
 				if [[ "$line" != *"[ServerCommand]"* ]] && [[ "$line" == *"Announcing server to master server: Invalid steam ticket"* ]] && [[ "$line" != *"[All]"* ]]; then
 					if [[ "$EMAIL_SSK" == "1" ]] && [ ! -d "$SCRIPT_DIR/ssk_disable_notifications.txt" ]; then
