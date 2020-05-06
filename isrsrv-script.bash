@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202005061527"
+export VERSION="202005062205"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -565,22 +565,27 @@ script_save() {
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
-			LOOP_TIMEOUT=$(date -ud "$TIMEOUT_SAVE second" +%s)
 			( sleep 5 && tmux -L $USER-$SERVER_NUMBER-tmux.sock send-keys -t $NAME.0 'save' ENTER ) &
+			timeout --preserve-status $TIMEOUT_SAVE /bin/bash -c '
 			while read line; do
 				if [[ "$line" == *"[Server]: Save completed."* ]] && [[ "$line" != *"[All]:"* ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER has been completed." | tee -a "$LOG_SCRIPT"
 					break
 				elif [[ "$line" == *"INFO: Galaxy is already saving!"* ]] && [[ "$line" != *"[All]:"* ]]; then
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save loop on server $SERVER_NUMBER detected. Restarting..." | tee -a "$LOG_SCRIPT"
-					script_restart $SERVER_NUMBER
+					exit 7
 					break
-				elif [[ $(date -u +%s) -gt $LOOP_TIMEOUT ]]; then
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save time limit for server $SERVER_NUMBER exceeded."
 				else
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER is in progress. Please wait..."
 				fi
-			done < <(tail -n1 -f /tmp/$USER-$SERVICE_NAME-$SERVER_NUMBER-tmux.log)
+			done < <(tail -n1 -f /tmp/$USER-$SERVICE_NAME-$SERVER_NUMBER-tmux.log)'
+			EXIT_CODE="$2"
+			echo $?
+			if [[ "$EXIT_CODE" == "124" ]]; then
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save time limit for server $SERVER_NUMBER exceeded."
+			elif [[ "$EXIT_CODE" == "7" ]]; then
+				script_restart $SERVER_NUMBER
+			fi
 		fi
 	done
 }
@@ -608,7 +613,7 @@ script_ssk_monitor() {
 		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
 		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening for SSK notifications on server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
-			LOOP_TIMEOUT=$(date -ud "$TIMEOUT_SSK second" +%s)
+			timeout $TIMEOUT_SSK /bin/bash -c '
 			while read line; do
 				if [[ "$line" != *"[ServerCommand]"* ]] && [[ "$line" == *"Announcing server to master server: Invalid steam ticket"* ]] && [[ "$line" != *"[All]"* ]]; then
 					if [[ "$EMAIL_SSK" == "1" ]] && [ ! -d "$SCRIPT_DIR/ssk_disable_notifications.txt" ]; then
@@ -624,10 +629,13 @@ script_ssk_monitor() {
 						touch $SCRIPT_DIR/ssk_disable_notifications.txt
 					fi
 					break
-				elif [[ $(date -u +%s) -gt $LOOP_TIMEOUT ]]; then
+				else
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening for SSK notifications on server $SERVER_NUMBER complete. Server nominal." | tee -a "$LOG_SCRIPT"
 				fi
-			done < <(tail -n1 -f /tmp/$USER-$SERVICE_NAME-$SERVER_NUMBER-tmux.log)
+			done < <(tail -n1 -f /tmp/$USER-$SERVICE_NAME-$SERVER_NUMBER-tmux.log)'
+			if [ $? -eq 124 ]; then
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening time limit for server $SERVER_NUMBER exceeded."
+			fi
 		fi
 	done
 }
@@ -2826,16 +2834,16 @@ case "$1" in
 		script_remove_server
 		;;
 	-start)
-		script_start "$2"
+		script_start $2
 		;;
 	-start_no_err)
-		script_start_ignore_errors "$2"
+		script_start_ignore_errors $2
 		;;
 	-stop)
-		script_stop "$2"
+		script_stop $2
 		;;
 	-restart)
-		script_restart "$2"
+		script_restart $2
 		;;
 	-save)
 		script_save
@@ -2871,7 +2879,7 @@ case "$1" in
 		script_attach $2
 		;;
 	-attach_commands)
-		script_attach_commands "$2"
+		script_attach_commands $2
 		;;
 	-install_packages)
 		script_install_packages
@@ -2895,19 +2903,19 @@ case "$1" in
 		script_ssk_check_email
 		;;
 	-send_notification_start_initialized)
-		script_send_notification_start_initialized "$2"
+		script_send_notification_start_initialized $2
 		;;
 	-send_notification_start_complete)
-		script_send_notification_start_complete "$2"
+		script_send_notification_start_complete $2
 		;;
 	-send_notification_stop_initialized)
-		script_send_notification_stop_initialized "$2"
+		script_send_notification_stop_initialized $2
 		;;
 	-send_notification_stop_complete)
-		script_send_notification_stop_complete "$2"
+		script_send_notification_stop_complete $2
 		;;
 	-send_notification_crash)
-		script_send_notification_crash "$2"
+		script_send_notification_crash $2
 		;;
 	-ssk_install)
 		script_install_ssk
@@ -2922,7 +2930,7 @@ case "$1" in
 		script_install_tmux_config
 		;;
 	-server_tmux_install)
-		script_server_tmux_install "$2"
+		script_server_tmux_install $2
 		;;
 	-rebuild_commands)
 		script_install_commands
@@ -2937,7 +2945,7 @@ case "$1" in
 		script_disable_services_manual
 		;;
 	-enable_services)
-		script_enable_services_manual "$2"
+		script_enable_services_manual $2
 		;;
 	-reload_services)
 		script_reload_services
