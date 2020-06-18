@@ -1,3 +1,12 @@
+Update 2020-06-18
+
+- added Debian 10 (Buster) support
+- added error message if trying to install packages on non supported distro
+- fixed a problem with the game and save not being backed up and restored when rebuilding prefix
+- fixed the detection function for "Galaxy is already saving". The server will be restarted now if it detects this.
+
+-------------------------
+
 Update 2020-05-06
 
 - fixed save function not restarting the server if the infinite save bug is detected
