@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202006222354"
+export VERSION="202007101602"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -538,16 +538,18 @@ script_send_notification_crash() {
 	zip -j $CRASH_DIR/service_logs.zip $CRASH_DIR/service_log.txt
 	zip -j $CRASH_DIR/script_logs.zip $LOG_SCRIPT
 	find "$BCKP_SRC_DIR"/Logs/ -iname *$1* -maxdepth 1 -type f \( ! -iname "chat.txt" \) -mmin -30 -exec zip $CRASH_DIR/game_logs.zip -j {} +
+	zip -j $CRASH_DIR/wine_logs.zip "$(find $LOG_DIR/$SERVICE_NAME-wine-$1*.log -type f -printf '%T@\t%p\n' | sort -t $'\t' -g | tail -n -1 | cut -d $'\t' -f 2-)"
 	rm $CRASH_DIR/service_log.txt
 	
 	if [[ "$EMAIL_CRASH" == "1" ]]; then
-		mail -a $CRASH_DIR/service_logs.zip -a $CRASH_DIR/script_logs.zip -a $CRASH_DIR/game_logs.zip -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
+		mail -a $CRASH_DIR/service_logs.zip -a $CRASH_DIR/script_logs.zip -a $CRASH_DIR/game_logs.zip -a $CRASH_DIR/wine_logs.zip -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: Crash" $EMAIL_RECIPIENT <<- EOF
 		The $NAME server $1 crashed 3 times in the last 5 minutes. Automatic restart is disabled and the server is inactive. Please check the logs for more information.
 		
 		Attachment contents:
 		service_logs.zip - Logs from the systemd service
 		script_logs.zip - Logs from the script
 		game_logs.zip - Logs from the game
+		wine_logs.zip - Logs from the wine compatibility layer
 		
 		ONLY SEND game_logs.zip TO THE DEVS IF NEED BE! DON NOT SEND OTHER ARCHIVES!
 		
@@ -561,6 +563,16 @@ script_send_notification_crash() {
 		done < $SCRIPT_DIR/discord_webhooks.txt
 	fi
 	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Crash) Server crashed. Please review your logs located in $CRASH_DIR." | tee -a "$LOG_SCRIPT"
+}
+
+#Move the wine log and add date and time to it after service shutdown
+script_move_wine_log() {
+	script_logs
+	if [ -f "$LOG_DIR_ALL/$SERVICE_NAME-wine-$1.log" ]; then
+		mv $LOG_DIR_ALL/$SERVICE_NAME-wine-$1.log $LOG_DIR/$SERVICE_NAME-wine-$1-$(date +"%Y-%m-%d_%H-%M").log
+	else
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Move wine log) Nothing to move." | tee -a "$LOG_SCRIPT"
+	fi
 }
 
 #Issue the save command to the server
@@ -578,7 +590,6 @@ script_save() {
 					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save game to disk for server $SERVER_NUMBER has been completed." | tee -a "$LOG_SCRIPT"
 					break
 				elif [[ "$line" == *"INFO: Galaxy is already saving!"* ]] && [[ "$line" != *"[All]:"* ]]; then
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save loop on server $SERVER_NUMBER detected. Restarting..." | tee -a "$LOG_SCRIPT"
 					exit 7
 					break
 				else
@@ -589,6 +600,10 @@ script_save() {
 			if [[ "$EXIT_CODE" == "124" ]]; then
 				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save time limit for server $SERVER_NUMBER exceeded."
 			elif [[ "$EXIT_CODE" == "7" ]]; then
+                echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Save) Save loop on server $SERVER_NUMBER detected. Restarting..." | tee -a "$LOG_SCRIPT"
+                while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
+					curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"Save loop on server $SERVER_NUMBER detected. Restarting...\"}" "$DISCORD_WEBHOOK"
+				done < $SCRIPT_DIR/discord_webhooks.txt
 				script_restart $SERVER_NUMBER
 			fi
 		fi
@@ -711,7 +726,7 @@ script_start() {
 			sleep 1
 		elif [[ "$(systemctl --user show -p ActiveState --value $SERVICE@$1.service)" == "failed" ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Start) Server $1 is in failed state. See systemctl --user status $SERVICE@$1.service for details." | tee -a "$LOG_SCRIPT"
-			read -p "Do you still want to start the server?: (y/n)" FORCE_START
+			read -p "Do you still want to start the server? (y/n): " FORCE_START
 			if [[ "$FORCE_START" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				systemctl --user start $SERVICE@$1.service
 				sleep 1
@@ -1245,107 +1260,12 @@ script_install_alias() {
 	fi
 }
 
-#Install tmux config
-script_install_tmux_config() {
-	script_logs
-	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall tmux configuration) Tmux configuration reinstallation commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
-	read -p "Are you sure you want to reinstall the tmux configuration? (y/n): " REINSTALL_TMUX_CONFIG
-	if [[ "$REINSTALL_TMUX_CONFIG" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-		INSTALL_TMUX_CONFIG_STATE="1"
-	elif [[ "$REINSTALL_TMUX_CONFIG" =~ ^([nN][oO]|[nN])$ ]]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall tmux configuration) Tmux configuration reinstallation aborted." | tee -a "$LOG_SCRIPT"
-		INSTALL_TMUX_CONFIG_STATE="0"
-	fi
-	if [[ "$INSTALL_TMUX_CONFIG_STATE" == "1" ]]; then
-		for TMUX_CONFIG_FILE in $SCRIPT_DIR/tmux_config/*; do
-			cat > $TMUX_CONFIG_FILE <<-EOF
-			#Tmux configuration
-			set -g activity-action other
-			set -g allow-rename off
-			set -g assume-paste-time 1
-			set -g base-index 0
-			set -g bell-action any
-			set -g default-command "${SHELL}"
-			set -g default-terminal "tmux-256color" 
-			set -g default-shell "/bin/bash"
-			set -g default-size "132x42"
-			set -g destroy-unattached off
-			set -g detach-on-destroy on
-			set -g display-panes-active-colour red
-			set -g display-panes-colour blue
-			set -g display-panes-time 1000
-			set -g display-time 3000
-			set -g history-limit 10000
-			set -g key-table "root"
-			set -g lock-after-time 0
-			set -g lock-command "lock -np"
-			set -g message-command-style fg=yellow,bg=black
-			set -g message-style fg=black,bg=yellow
-			set -g mouse on
-			#set -g prefix C-b
-			set -g prefix2 None
-			set -g renumber-windows off
-			set -g repeat-time 500
-			set -g set-titles off
-			set -g set-titles-string "#S:#I:#W - \"#T\" #{session_alerts}"
-			set -g silence-action other
-			set -g status on
-			set -g status-bg green
-			set -g status-fg black
-			set -g status-format[0] "#[align=left range=left #{status-left-style}]#{T;=/#{status-left-length}:status-left}#[norange default]#[list=on align=#{status-justify}]#[list=left-marker]<#[list=right-marker]>#[list=on]#{W:#[range=window|#{window_index} #{window-status-style}#{?#{&&:#{window_last_flag},#{!=:#{window-status-last-style},default}}, #{window-status-last-style},}#{?#{&&:#{window_bell_flag},#{!=:#{window-status-bell-style},default}}, #{window-status-bell-style},#{?#{&&:#{||:#{window_activity_flag},#{window_silence_flag}},#{!=:#{window-status-activity-style},default}}, #{window-status-activity-style},}}]#{T:window-status-format}#[norange default]#{?window_end_flag,,#{window-status-separator}},#[range=window|#{window_index} list=focus #{?#{!=:#{window-status-current-style},default},#{window-status-current-style},#{window-status-style}}#{?#{&&:#{window_last_flag},#{!=:#{window-status-last-style},default}}, #{window-status-last-style},}#{?#{&&:#{window_bell_flag},#{!=:#{window-status-bell-style},default}}, #{window-status-bell-style},#{?#{&&:#{||:#{window_activity_flag},#{window_silence_flag}},#{!=:#{window-status-activity-style},default}}, #{window-status-activity-style},}}]#{T:window-status-current-format}#[norange list=on default]#{?window_end_flag,,#{window-status-separator}}}#[nolist align=right range=right #{status-right-style}]#{T;=/#{status-right-length}:status-right}#[norange default]"
-			set -g status-format[1] "#[align=centre]#{P:#{?pane_active,#[reverse],}#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
-			set -g status-interval 15
-			set -g status-justify left
-			set -g status-keys emacs
-			set -g status-left "[#S] "
-			set -g status-left-length 10
-			set -g status-left-style default
-			set -g status-position bottom
-			set -g status-right "#{?window_bigger,[#{window_offset_x}#,#{window_offset_y}] ,}\"#{=21:pane_title}\" %H:%M %d-%b-%y"
-			set -g status-right-length 40
-			set -g status-right-style default
-			set -g status-style fg=black,bg=green
-			set -g update-environment[0] "DISPLAY"
-			set -g update-environment[1] "KRB5CCNAME"
-			set -g update-environment[2] "SSH_ASKPASS"
-			set -g update-environment[3] "SSH_AUTH_SOCK"
-			set -g update-environment[4] "SSH_AGENT_PID"
-			set -g update-environment[5] "SSH_CONNECTION"
-			set -g update-environment[6] "WINDOWID"
-			set -g update-environment[7] "XAUTHORITY"
-			set -g visual-activity off
-			set -g visual-bell off
-			set -g visual-silence off
-			set -g word-separators " -_@"
-
-			#Change prefix key from ctrl+b to ctrl+a
-			unbind C-b
-			set -g prefix C-a
-			bind C-a send-prefix
-
-			#Bind C-a r to reload the config file
-			bind-key r source-file $TMUX_CONFIG_FILE \; display-message "Config reloaded!"
-
-			set-hook -g session-created 'resize-window -y 24 -x 10000'
-			set-hook -g session-created "pipe-pane -o 'tee >> /tmp/$USER-$SERVICE_NAME-$(echo $TMUX_CONFIG_FILE | awk -F "$SERVICE_NAME-" '{print $2}' | awk -F "-tmux.conf" '{print $1}')-tmux.log'"
-			set-hook -g client-attached 'resize-window -y 24 -x 10000'
-			set-hook -g client-detached 'resize-window -y 24 -x 10000'
-			set-hook -g client-resized 'resize-window -y 24 -x 10000'
-
-			#Default key bindings (only here for info)
-			#Ctrl-b l (Move to the previously selected window)
-			#Ctrl-b w (List all windows / window numbers)
-			#Ctrl-b <window number> (Move to the specified window number, the default bindings are from 0 – 9)
-			#Ctrl-b q  (Show pane numbers, when the numbers show up type the key to goto that pane)
-
-			#Ctrl-b f <window name> (Search for window name)
-			#Ctrl-b w (Select from interactive list of windows)
-
-			#Copy/ scroll mode
-			#Ctrl-b [ (in copy mode you can navigate the buffer including scrolling the history. Use vi or emacs-style key bindings in copy mode. The default is emacs. To exit copy mode use one of the following keybindings: vi q emacs Esc)
-			EOF
-		done
-		cat > $SCRIPT_DIR/tmux_config/$SERVICE_NAME-commands-tmux.conf <<-EOF
+#Install tmux configuration for specific server when first ran
+script_server_tmux_install() {
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Server tmux configuration) Installing tmux configuration for server $1." | tee -a "$LOG_SCRIPT"
+	if [ ! -f /tmp/$USER-$SERVICE_NAME-$1-tmux.conf ]; then
+		touch /tmp/$USER-$SERVICE_NAME-$1-tmux.conf
+		cat > /tmp/$USER-$SERVICE_NAME-$1-tmux.conf <<- EOF
 		#Tmux configuration
 		set -g activity-action other
 		set -g allow-rename off
@@ -1411,9 +1331,10 @@ script_install_tmux_config() {
 		bind C-a send-prefix
 
 		#Bind C-a r to reload the config file
-		bind-key r source-file $SCRIPT_DIR/tmux_config/$SERVICE_NAME-commands-tmux.conf \; display-message "Config reloaded!"
+		bind-key r source-file /tmp/$USER-$SERVICE_NAME-$1-tmux.conf \; display-message "Config reloaded!"
 
 		set-hook -g session-created 'resize-window -y 24 -x 10000'
+		set-hook -g session-created "pipe-pane -o 'tee >> /tmp/$USER-$SERVICE_NAME-$1-tmux.log'"
 		set-hook -g client-attached 'resize-window -y 24 -x 10000'
 		set-hook -g client-detached 'resize-window -y 24 -x 10000'
 		set-hook -g client-resized 'resize-window -y 24 -x 10000'
@@ -1430,106 +1351,7 @@ script_install_tmux_config() {
 		#Copy/ scroll mode
 		#Ctrl-b [ (in copy mode you can navigate the buffer including scrolling the history. Use vi or emacs-style key bindings in copy mode. The default is emacs. To exit copy mode use one of the following keybindings: vi q emacs Esc)
 		EOF
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall tmux configuration) Tmux configuration reinstallation complete. Restart your servers for changes to take affect." | tee -a "$LOG_SCRIPT"
-	fi
-}
-
-#Install tmux configuration for specific server when first ran
-script_server_tmux_install() {
-	if [ -z "$1" ]; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Server tmux configuration) No server ID given. Aborting..." | tee -a "$LOG_SCRIPT"
-	else
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Server tmux configuration) First time starting server $1. Installing server tmux configuration." | tee -a "$LOG_SCRIPT"
-		if [ ! -f $SCRIPT_DIR/tmux_config/$SERVICE_NAME-$1-tmux.conf ]; then
-			touch $SCRIPT_DIR/tmux_config/$SERVICE_NAME-$1-tmux.conf
-			cat > $SCRIPT_DIR/tmux_config/$SERVICE_NAME-$1-tmux.conf <<- EOF
-			#Tmux configuration
-			set -g activity-action other
-			set -g allow-rename off
-			set -g assume-paste-time 1
-			set -g base-index 0
-			set -g bell-action any
-			set -g default-command "${SHELL}"
-			set -g default-terminal "tmux-256color" 
-			set -g default-shell "/bin/bash"
-			set -g default-size "132x42"
-			set -g destroy-unattached off
-			set -g detach-on-destroy on
-			set -g display-panes-active-colour red
-			set -g display-panes-colour blue
-			set -g display-panes-time 1000
-			set -g display-time 3000
-			set -g history-limit 10000
-			set -g key-table "root"
-			set -g lock-after-time 0
-			set -g lock-command "lock -np"
-			set -g message-command-style fg=yellow,bg=black
-			set -g message-style fg=black,bg=yellow
-			set -g mouse on
-			#set -g prefix C-b
-			set -g prefix2 None
-			set -g renumber-windows off
-			set -g repeat-time 500
-			set -g set-titles off
-			set -g set-titles-string "#S:#I:#W - \"#T\" #{session_alerts}"
-			set -g silence-action other
-			set -g status on
-			set -g status-bg green
-			set -g status-fg black
-			set -g status-format[0] "#[align=left range=left #{status-left-style}]#{T;=/#{status-left-length}:status-left}#[norange default]#[list=on align=#{status-justify}]#[list=left-marker]<#[list=right-marker]>#[list=on]#{W:#[range=window|#{window_index} #{window-status-style}#{?#{&&:#{window_last_flag},#{!=:#{window-status-last-style},default}}, #{window-status-last-style},}#{?#{&&:#{window_bell_flag},#{!=:#{window-status-bell-style},default}}, #{window-status-bell-style},#{?#{&&:#{||:#{window_activity_flag},#{window_silence_flag}},#{!=:#{window-status-activity-style},default}}, #{window-status-activity-style},}}]#{T:window-status-format}#[norange default]#{?window_end_flag,,#{window-status-separator}},#[range=window|#{window_index} list=focus #{?#{!=:#{window-status-current-style},default},#{window-status-current-style},#{window-status-style}}#{?#{&&:#{window_last_flag},#{!=:#{window-status-last-style},default}}, #{window-status-last-style},}#{?#{&&:#{window_bell_flag},#{!=:#{window-status-bell-style},default}}, #{window-status-bell-style},#{?#{&&:#{||:#{window_activity_flag},#{window_silence_flag}},#{!=:#{window-status-activity-style},default}}, #{window-status-activity-style},}}]#{T:window-status-current-format}#[norange list=on default]#{?window_end_flag,,#{window-status-separator}}}#[nolist align=right range=right #{status-right-style}]#{T;=/#{status-right-length}:status-right}#[norange default]"
-			set -g status-format[1] "#[align=centre]#{P:#{?pane_active,#[reverse],}#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
-			set -g status-interval 15
-			set -g status-justify left
-			set -g status-keys emacs
-			set -g status-left "[#S] "
-			set -g status-left-length 10
-			set -g status-left-style default
-			set -g status-position bottom
-			set -g status-right "#{?window_bigger,[#{window_offset_x}#,#{window_offset_y}] ,}\"#{=21:pane_title}\" %H:%M %d-%b-%y"
-			set -g status-right-length 40
-			set -g status-right-style default
-			set -g status-style fg=black,bg=green
-			set -g update-environment[0] "DISPLAY"
-			set -g update-environment[1] "KRB5CCNAME"
-			set -g update-environment[2] "SSH_ASKPASS"
-			set -g update-environment[3] "SSH_AUTH_SOCK"
-			set -g update-environment[4] "SSH_AGENT_PID"
-			set -g update-environment[5] "SSH_CONNECTION"
-			set -g update-environment[6] "WINDOWID"
-			set -g update-environment[7] "XAUTHORITY"
-			set -g visual-activity off
-			set -g visual-bell off
-			set -g visual-silence off
-			set -g word-separators " -_@"
-
-			#Change prefix key from ctrl+b to ctrl+a
-			unbind C-b
-			set -g prefix C-a
-			bind C-a send-prefix
-
-			#Bind C-a r to reload the config file
-			bind-key r source-file $SCRIPT_DIR/tmux_config/$SERVICE_NAME-$1-tmux.conf \; display-message "Config reloaded!"
-
-			set-hook -g session-created 'resize-window -y 24 -x 10000'
-			set-hook -g session-created "pipe-pane -o 'tee >> /tmp/$USER-$SERVICE_NAME-$1-tmux.log'"
-			set-hook -g client-attached 'resize-window -y 24 -x 10000'
-			set-hook -g client-detached 'resize-window -y 24 -x 10000'
-			set-hook -g client-resized 'resize-window -y 24 -x 10000'
-
-			#Default key bindings (only here for info)
-			#Ctrl-b l (Move to the previously selected window)
-			#Ctrl-b w (List all windows / window numbers)
-			#Ctrl-b <window number> (Move to the specified window number, the default bindings are from 0 – 9)
-			#Ctrl-b q  (Show pane numbers, when the numbers show up type the key to goto that pane)
-
-			#Ctrl-b f <window name> (Search for window name)
-			#Ctrl-b w (Select from interactive list of windows)
-
-			#Copy/ scroll mode
-			#Ctrl-b [ (in copy mode you can navigate the buffer including scrolling the history. Use vi or emacs-style key bindings in copy mode. The default is emacs. To exit copy mode use one of the following keybindings: vi q emacs Esc)
-			EOF
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Server tmux configuration) Server tmux configuration installed successfully." | tee -a "$LOG_SCRIPT"
-		fi
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Server tmux configuration) Tmux configuration for server $1 installed successfully." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
@@ -1754,13 +1576,15 @@ script_install_services() {
 		ExecStartPre=$SCRIPT_DIR/$SCRIPT_NAME -server_tmux_install %i
 		ExecStartPre=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_start_initialized %i
 		ExecStartPre=/usr/bin/rsync -av --info=progress2 $SRV_DIR/$WINE_PREFIX_GAME_CONFIG/{server_%i.json,server_%i,userdb_%i,workshop_%i} $TMPFS_DIR/$WINE_PREFIX_GAME_CONFIG
-		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/tmux_config/$SERVICE_NAME-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s $NAME 'env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$TMPFS_DIR wineconsole --backend=curses $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE'
+		ExecStart=/usr/bin/tmux -f /tmp/$USER-$SERVICE_NAME-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s $NAME 'env WINEARCH=$WINE_ARCH WINEDEBUG=warn+heap WINEPREFIX=$TMPFS_DIR wineconsole --backend=curses $TMPFS_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE 2> $LOG_DIR_ALL/$SERVICE_NAME-wine-%i.log'
 		ExecStartPost=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_start_complete %i
 		ExecStop=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_stop_initialized %i
 		ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t $NAME.0 'quittimer 15 Server shutting down in 15 seconds!' ENTER
 		ExecStop=/usr/bin/sleep 20
 		ExecStop=/usr/bin/rsync -av --info=progress2  $TMPFS_DIR/$WINE_PREFIX_GAME_CONFIG/{server_%i.json,server_%i,userdb_%i,workshop_%i} $SRV_DIR/$WINE_PREFIX_GAME_CONFIG
-		ExecStop=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-%i-tmux.log
+		ExecStopPost=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-%i-tmux.log
+		ExecStopPost=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-%i-tmux.conf
+		ExecStopPost=$SCRIPT_DIR/$SCRIPT_NAME -move_wine_log %i
 		ExecStopPost=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_stop_complete %i
 		TimeoutStartSec=infinity
 		TimeoutStopSec=120
@@ -1787,12 +1611,14 @@ script_install_services() {
 		WorkingDirectory=$SRV_DIR/$WINE_PREFIX_GAME_DIR/Build/
 		ExecStartPre=$SCRIPT_DIR/$SCRIPT_NAME -server_tmux_install %i
 		ExecStartPre=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_start_initialized %i
-		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/tmux_config/$SERVICE_NAME-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s $NAME 'env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR wineconsole --backend=curses $SRV_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE'
+		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/tmux_config/$SERVICE_NAME-%i-tmux.conf -L %u-%i-tmux.sock new-session -d -s $NAME 'env WINEARCH=$WINE_ARCH WINEDEBUG=warn+heap WINEPREFIX=$SRV_DIR wineconsole --backend=curses $SRV_DIR/$WINE_PREFIX_GAME_DIR/$WINE_PREFIX_GAME_EXE 2> $LOG_DIR_ALL/$SERVICE_NAME-wine-%i.log'
 		ExecStartPost=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_start_complete %i
 		ExecStop=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_stop_initialized %i
 		ExecStop=/usr/bin/tmux -L %u-%i-tmux.sock send-keys -t $NAME.0 'quittimer 15 Server shutting down in 15 seconds!' ENTER
 		ExecStop=/usr/bin/sleep 20
-		ExecStop=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-%i-tmux.log
+		ExecStopPost=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-%i-tmux.log
+		ExecStopPost=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-%i-tmux.conf
+		ExecStopPost=$SCRIPT_DIR/$SCRIPT_NAME -move_wine_log %i
 		ExecStopPost=$SCRIPT_DIR/$SCRIPT_NAME -send_notification_stop_complete %i
 		TimeoutStartSec=infinity
 		TimeoutStopSec=120
@@ -2818,7 +2644,7 @@ script_install() {
 }
 
 #Do not allow for another instance of this script to run to prevent data loss
-if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]] && [[ "-server_tmux_install" != "$1" ]] && [[ "-attach" != "$1" ]] && [[ "-attach_commands" != "$1" ]] && [[ "-status" != "$1" ]]; then
+if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]] && [[ "-move_wine_log" != "$1" ]] && [[ "-server_tmux_install" != "$1" ]] && [[ "-attach" != "$1" ]] && [[ "-attach_commands" != "$1" ]] && [[ "-status" != "$1" ]]; then
 	SCRIPT_PID_CHECK=$(basename -- "$0")
 	if pidof -x "$SCRIPT_PID_CHECK" -o $$ > /dev/null; then
 		echo "An another instance of this script is already running, please clear all the sessions of this script before starting a new session"
@@ -2878,7 +2704,6 @@ case "$1" in
 		echo -e "${GREEN}-ssk_monitor ${RED}- ${GREEN}Monitors SSK notifications in server consoles for a given time specified in the script config${NC}"
 		echo -e "${GREEN}-ssk_install ${RED}- ${GREEN}Installs new SSK.txt file. Your new SSK.txt needs to be in /home/$USER folder before using this${NC}"
 		echo -e "${GREEN}-install_aliases ${RED}- ${GREEN}Installs .bashrc aliases for easy access to the server tmux session${NC}"
-		echo -e "${GREEN}-rebuild_tmux_config ${RED}- ${GREEN}Reinstalls the tmux configuration file from the script. Usefull if any tmux configuration updates occoured${NC}"
 		echo -e "${GREEN}-rebuild_commands ${RED}- ${GREEN}Reinstalls the commands wrapper script if any updates occoured${NC}"
 		echo -e "${GREEN}-rebuild_services ${RED}- ${GREEN}Reinstalls the systemd services from the script. Usefull if any service updates occoured${NC}"
 		echo -e "${GREEN}-rebuild_prefix ${RED}- ${GREEN}Reinstalls the wine prefix. Usefull if any wine prefix updates occoured${NC}"
@@ -2999,6 +2824,9 @@ case "$1" in
 	-send_notification_crash)
 		script_send_notification_crash $2
 		;;
+	-move_wine_log)
+		script_move_wine_log $2
+		;;
 	-ssk_install)
 		script_install_ssk
 		;;
@@ -3007,9 +2835,6 @@ case "$1" in
 		;;
 	-install_aliases)
 		script_install_alias
-		;;
-	-rebuild_tmux_config)
-		script_install_tmux_config
 		;;
 	-server_tmux_install)
 		script_server_tmux_install $2
@@ -3044,7 +2869,7 @@ case "$1" in
 	echo ""
 	echo "For more detailed information, execute the script with the -help argument"
 	echo ""
-	echo "Usage: $0 {diag|add_server|remove_server|start|start_no_err|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|ssk_check|ssk_install|install_aliases|rebuild_tmux_config|rebuild_commands|rebuild_services|rebuild_prefix|disable_services|enable_services|reload_services|update|verify|update_script|update_script_force|attach|attach_commands|status|install|install_packages}"
+	echo "Usage: $0 {diag|add_server|remove_server|start|start_no_err|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|ssk_check|ssk_install|install_aliases|rebuild_commands|rebuild_services|rebuild_prefix|disable_services|enable_services|reload_services|update|verify|update_script|update_script_force|attach|attach_commands|status|install|install_packages}"
 	exit 1
 	;;
 esac
