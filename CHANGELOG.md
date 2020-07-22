@@ -1,3 +1,11 @@
+Update 2020-07-22
+
+- fixed systemd service bugs
+
+Existing users need to stop the server and rebuild the service files with -rebuild_services
+
+-------------------------
+
 Update 2020-07-10
 
 - added log files generation about wine errors
