@@ -1,3 +1,13 @@
+Update 2020-09-26
+
+- fixed commands script
+- fixed commands script service
+- fixed log generation
+- fixed isr service not running with proper tmux config
+- added seperate tmux config for commands script
+
+-------------------------
+
 Update 2020-07-22
 
 - fixed systemd service bugs

@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202007221311"
+export VERSION="202009260021"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -233,9 +233,9 @@ script_attach() {
 		if [ $? == 0 ]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach) User attached to server session with ID: $1" | tee -a "$LOG_SCRIPT"
 			tmux -L $USER-$1-tmux.sock attach -t $NAME
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) User deattached from server session with ID: $1" | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach) User deattached from server session with ID: $1" | tee -a "$LOG_SCRIPT"
 		else
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach Commands) Failed to attach to server session with ID: $1" | tee -a "$LOG_SCRIPT"
+			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Attach) Failed to attach to server session with ID: $1" | tee -a "$LOG_SCRIPT"
 		fi
 	fi
 }
@@ -1401,8 +1401,8 @@ while IFS= read line; do
 		if [[ "$line" == *"[ServerCommand]"* ]] && [[ "$line" == *"help"* ]] && [[ "$line" != *"[All]"* ]] && [[ "$COMMANDS_SCRIPT" == "1" ]]; then
 			(
 			#Display command descriptions
-			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $1}' | awk -F '[ (]' '{print $1}')
-			STEAMID=$(echo $line | awk -F"[()]" '{print $1}')
+			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $2}' | awk -F '[ (]' '{print $1}')
+			STEAMID=$(echo $line | awk -F"[()]" '{print $2}')
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Display help - help" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Display server hardware info - hardware" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Teleport to HSC Industrial Complex - tp_hsc" ENTER
@@ -1415,8 +1415,8 @@ while IFS= read line; do
 		elif [[ "$line" == *"[ServerCommand]"* ]] && [[ "$line" == *"hardware"* ]] && [[ "$line" != *"[All]"* ]] && [[ "$COMMANDS_SCRIPT" == "1" ]]; then
 			#Display server hardware informaion
 			(
-			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $1}' | awk -F '[ (]' '{print $1}')
-			STEAMID=$(echo $line | awk -F"[()]" '{print $1}')
+			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $2}' | awk -F '[ (]' '{print $1}')
+			STEAMID=$(echo $line | awk -F"[()]" '{print $2}')
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Motherboard: Asus P10M-WS" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Cpu: Intel Xeon 1245v6" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Ram: 64GB DDR4" ENTER
@@ -1428,8 +1428,8 @@ while IFS= read line; do
 		elif [[ "$line" == *"[ServerCommand]"* ]] && [[ "$line" == *"tp_hsc"* ]] && [[ "$line" != *"[All]"* ]] && [[ "$COMMANDS_SCRIPT" == "1" ]]; then
 			#Vectron Syx
 			(
-			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $1}' | awk -F '[ (]' '{print $1}')
-			STEAMID=$(echo $line | awk -F"[()]" '{print $1}')
+			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $2}' | awk -F '[ (]' '{print $1}')
+			STEAMID=$(echo $line | awk -F"[()]" '{print $2}')
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Teleporting to HSC Industrial Complex" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "tpts $STEAMID \"Vectron Syx\" \"Industrial Complex\"" ENTER
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] [Server $1] (Commands) Player $PLAYER with SteamID64 $STEAMID executed command: tp_hsc"
@@ -1438,8 +1438,8 @@ while IFS= read line; do
 		elif [[ "$line" == *"[ServerCommand]"* ]] && [[ "$line" == *"tp_gt"* ]] && [[ "$line" != *"[All]"* ]] && [[ "$COMMANDS_SCRIPT" == "1" ]]; then
 			#Alpha Ventura
 			(
-			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $1}' | awk -F '[ (]' '{print $1}')
-			STEAMID=$(echo $line | awk -F"[()]" '{print $1}')
+			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $2}' | awk -F '[ (]' '{print $1}')
+			STEAMID=$(echo $line | awk -F"[()]" '{print $2}')
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Teleporting to GT Trade Hub" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "tpts $STEAMID \"Alpha Ventura\" \"Trade Hub\"" ENTER
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] [Server $1] (Commands) Player $PLAYER with SteamID64 $STEAMID executed command: tp_gt"
@@ -1448,8 +1448,8 @@ while IFS= read line; do
 		elif [[ "$line" == *"[ServerCommand]"* ]] && [[ "$line" == *"tp_s3"* ]] && [[ "$line" != *"[All]"* ]] && [[ "$COMMANDS_SCRIPT" == "1" ]]; then
 			#Sentinel Prime
 			(
-			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $1}' | awk -F '[ (]' '{print $1}')
-			STEAMID=$(echo $line | awk -F"[()]" '{print $1}')
+			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $2}' | awk -F '[ (]' '{print $1}')
+			STEAMID=$(echo $line | awk -F"[()]" '{print $2}')
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Teleporting to S3 Fort Bragg" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "tpts $STEAMID \"Sentinel Prime\" \"Fort Bragg\"" ENTER
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] [Server $1] (Commands) Player $PLAYER with SteamID64 $STEAMID executed command: tp_s3"
@@ -1458,8 +1458,8 @@ while IFS= read line; do
 		elif [[ "$line" == *"[ServerCommand]"* ]] && [[ "$line" == *"tp_dft"* ]] && [[ "$line" != *"[All]"* ]] && [[ "$COMMANDS_SCRIPT" == "1" ]]; then
 			#Scaverion
 			(
-			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $1}' | awk -F '[ (]' '{print $1}')
-			STEAMID=$(echo $line | awk -F"[()]" '{print $1}')
+			PLAYER=$(echo $line | awk -F '[[ServerCommand]] ' '{print $2}' | awk -F '[ (]' '{print $1}')
+			STEAMID=$(echo $line | awk -F"[()]" '{print $2}')
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "whisper $STEAMID Teleporting to DFT Black Pit" ENTER
 			tmux -L $USER-$1-tmux.sock send-keys -t $NAME.0 "tpts $STEAMID \"Scaverion\" \"The Black Pit\"" ENTER
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] [Server $1] (Commands) Player $PLAYER with SteamID64 $STEAMID executed command: tp_dft"
@@ -1479,6 +1479,101 @@ EOF
 			systemctl --user daemon-reload
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Reinstall commands script) Commands wrapper script reinstallation complete." | tee -a "$LOG_SCRIPT"
 		fi
+	fi
+}
+
+#Install tmux configuration for specific server when first ran
+script_commands_tmux_install() {
+	echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Commands script tmux configuration) Installing tmux configuration for server $1." | tee -a "$LOG_SCRIPT"
+	if [ ! -f /tmp/$USER-$SERVICE_NAME-commands-$1-tmux.conf ]; then
+		touch /tmp/$USER-$SERVICE_NAME-commands-$1-tmux.conf
+		cat > /tmp/$USER-$SERVICE_NAME-commands-$1-tmux.conf <<- EOF
+		#Tmux configuration
+		set -g activity-action other
+		set -g allow-rename off
+		set -g assume-paste-time 1
+		set -g base-index 0
+		set -g bell-action any
+		set -g default-command "${SHELL}"
+		set -g default-terminal "tmux-256color" 
+		set -g default-shell "/bin/bash"
+		set -g default-size "132x42"
+		set -g destroy-unattached off
+		set -g detach-on-destroy on
+		set -g display-panes-active-colour red
+		set -g display-panes-colour blue
+		set -g display-panes-time 1000
+		set -g display-time 3000
+		set -g history-limit 10000
+		set -g key-table "root"
+		set -g lock-after-time 0
+		set -g lock-command "lock -np"
+		set -g message-command-style fg=yellow,bg=black
+		set -g message-style fg=black,bg=yellow
+		set -g mouse on
+		#set -g prefix C-b
+		set -g prefix2 None
+		set -g renumber-windows off
+		set -g repeat-time 500
+		set -g set-titles off
+		set -g set-titles-string "#S:#I:#W - \"#T\" #{session_alerts}"
+		set -g silence-action other
+		set -g status on
+		set -g status-bg green
+		set -g status-fg black
+		set -g status-format[0] "#[align=left range=left #{status-left-style}]#{T;=/#{status-left-length}:status-left}#[norange default]#[list=on align=#{status-justify}]#[list=left-marker]<#[list=right-marker]>#[list=on]#{W:#[range=window|#{window_index} #{window-status-style}#{?#{&&:#{window_last_flag},#{!=:#{window-status-last-style},default}}, #{window-status-last-style},}#{?#{&&:#{window_bell_flag},#{!=:#{window-status-bell-style},default}}, #{window-status-bell-style},#{?#{&&:#{||:#{window_activity_flag},#{window_silence_flag}},#{!=:#{window-status-activity-style},default}}, #{window-status-activity-style},}}]#{T:window-status-format}#[norange default]#{?window_end_flag,,#{window-status-separator}},#[range=window|#{window_index} list=focus #{?#{!=:#{window-status-current-style},default},#{window-status-current-style},#{window-status-style}}#{?#{&&:#{window_last_flag},#{!=:#{window-status-last-style},default}}, #{window-status-last-style},}#{?#{&&:#{window_bell_flag},#{!=:#{window-status-bell-style},default}}, #{window-status-bell-style},#{?#{&&:#{||:#{window_activity_flag},#{window_silence_flag}},#{!=:#{window-status-activity-style},default}}, #{window-status-activity-style},}}]#{T:window-status-current-format}#[norange list=on default]#{?window_end_flag,,#{window-status-separator}}}#[nolist align=right range=right #{status-right-style}]#{T;=/#{status-right-length}:status-right}#[norange default]"
+		set -g status-format[1] "#[align=centre]#{P:#{?pane_active,#[reverse],}#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+		set -g status-interval 15
+		set -g status-justify left
+		set -g status-keys emacs
+		set -g status-left "[#S] "
+		set -g status-left-length 10
+		set -g status-left-style default
+		set -g status-position bottom
+		set -g status-right "#{?window_bigger,[#{window_offset_x}#,#{window_offset_y}] ,}\"#{=21:pane_title}\" %H:%M %d-%b-%y"
+		set -g status-right-length 40
+		set -g status-right-style default
+		set -g status-style fg=black,bg=green
+		set -g update-environment[0] "DISPLAY"
+		set -g update-environment[1] "KRB5CCNAME"
+		set -g update-environment[2] "SSH_ASKPASS"
+		set -g update-environment[3] "SSH_AUTH_SOCK"
+		set -g update-environment[4] "SSH_AGENT_PID"
+		set -g update-environment[5] "SSH_CONNECTION"
+		set -g update-environment[6] "WINDOWID"
+		set -g update-environment[7] "XAUTHORITY"
+		set -g visual-activity off
+		set -g visual-bell off
+		set -g visual-silence off
+		set -g word-separators " -_@"
+
+		#Change prefix key from ctrl+b to ctrl+a
+		unbind C-b
+		set -g prefix C-a
+		bind C-a send-prefix
+
+		#Bind C-a r to reload the config file
+		bind-key r source-file /tmp/$USER-$SERVICE_NAME-commands-$1-tmux.conf \; display-message "Config reloaded!"
+
+		set-hook -g session-created 'resize-window -y 24 -x 10000'
+		set-hook -g session-created "pipe-pane -o 'tee >> /tmp/$USER-$SERVICE_NAME-commands-$1-tmux.log'"
+		set-hook -g client-attached 'resize-window -y 24 -x 10000'
+		set-hook -g client-detached 'resize-window -y 24 -x 10000'
+		set-hook -g client-resized 'resize-window -y 24 -x 10000'
+
+		#Default key bindings (only here for info)
+		#Ctrl-b l (Move to the previously selected window)
+		#Ctrl-b w (List all windows / window numbers)
+		#Ctrl-b <window number> (Move to the specified window number, the default bindings are from 0 – 9)
+		#Ctrl-b q  (Show pane numbers, when the numbers show up type the key to goto that pane)
+
+		#Ctrl-b f <window name> (Search for window name)
+		#Ctrl-b w (Select from interactive list of windows)
+
+		#Copy/ scroll mode
+		#Ctrl-b [ (in copy mode you can navigate the buffer including scrolling the history. Use vi or emacs-style key bindings in copy mode. The default is emacs. To exit copy mode use one of the following keybindings: vi q emacs Esc)
+		EOF
+		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Commands script tmux configuration) Tmux configuration for server $1 installed successfully." | tee -a "$LOG_SCRIPT"
 	fi
 }
 
@@ -1738,9 +1833,12 @@ script_install_services() {
 		[Service]
 		Type=forking
 		WorkingDirectory=/home/$USER
-		ExecStartPre=/usr/bin/touch $LOG_TMP
-		ExecStart=/usr/bin/tmux -f $SCRIPT_DIR/tmux_config/$SERVICE_NAME-commands-tmux.conf -L %u-%i-commands-tmux.sock new-session -d -s $NAME-%i-Commands $SCRIPT_DIR/$SERVICE_NAME-commands.bash %i
+		ExecStartPre=$SCRIPT_DIR/$SCRIPT_NAME -server_tmux_commands_install %i
+		ExecStartPre=/usr/bin/touch /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.log
+		ExecStart=/usr/bin/tmux -f /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.conf -L %u-%i-commands-tmux.sock new-session -d -s $NAME-%i-Commands $SCRIPT_DIR/$SERVICE_NAME-commands.bash %i
 		ExecStop=/usr/bin/tmux -L %u-%i-commands-tmux.sock kill-session -t $NAME
+		ExecStop=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.conf
+		ExecStop=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.log
 		TimeoutStartSec=90
 		TimeoutStopSec=90
 		RestartSec=10
@@ -1781,7 +1879,7 @@ script_install_prefix() {
 			env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEDLLOVERRIDES="mscoree=d" WINEPREFIX=$SRV_DIR wineboot --init /nogui
 			env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks corefonts
 			env DISPLAY=:5.0 WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q vcrun2012
-			env DISPLAY=:5.0 WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q dotnet48
+			env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q dotnet472
 			env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks sound=disabled
 			pkill -f Xvfb
 			if [[ "$REINSTALL_PREFIX_KEEP_DATA" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -2604,7 +2702,8 @@ script_install() {
 	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEDLLOVERRIDES="mscoree=d" WINEPREFIX=$SRV_DIR wineboot --init /nogui
 	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks corefonts
 	env DISPLAY=:5.0 WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q vcrun2012
-	env DISPLAY=:5.0 WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q dotnet48
+	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks -q dotnet472
+	env WINEARCH=$WINE_ARCH WINEDEBUG=-all WINEPREFIX=$SRV_DIR winetricks sound=disabled
 	pkill -f Xvfb
 	EOF
 	
@@ -2649,7 +2748,7 @@ script_install() {
 }
 
 #Do not allow for another instance of this script to run to prevent data loss
-if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]] && [[ "-move_wine_log" != "$1" ]] && [[ "-server_tmux_install" != "$1" ]] && [[ "-attach" != "$1" ]] && [[ "-attach_commands" != "$1" ]] && [[ "-status" != "$1" ]]; then
+if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]] && [[ "-move_wine_log" != "$1" ]] && [[ "-server_tmux_install" != "$1" ]] && [[ "-server_tmux_commands_install" != "$1" ]] && [[ "-attach" != "$1" ]] && [[ "-attach_commands" != "$1" ]] && [[ "-status" != "$1" ]]; then
 	SCRIPT_PID_CHECK=$(basename -- "$0")
 	if pidof -x "$SCRIPT_PID_CHECK" -o $$ > /dev/null; then
 		echo "An another instance of this script is already running, please clear all the sessions of this script before starting a new session"
@@ -2844,6 +2943,9 @@ case "$1" in
 		;;
 	-server_tmux_install)
 		script_server_tmux_install $2
+		;;
+	-server_tmux_commands_install)
+		script_commands_tmux_install $2
 		;;
 	-rebuild_commands)
 		script_install_commands
