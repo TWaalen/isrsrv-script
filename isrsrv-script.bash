@@ -2,7 +2,7 @@
 
 #Interstellar Rift server script by 7thCore
 #If you do not know what any of these settings are you are better off leaving them alone. One thing might brake the other if you fiddle around with it.
-export VERSION="202009260021"
+export VERSION="202010062148"
 
 #Basics
 export NAME="IsRSrv" #Name of the tmux session
@@ -42,7 +42,6 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 	EMAIL_RECIPIENT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_recipient= | cut -d = -f2) #Send emails to this address
 	EMAIL_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update= | cut -d = -f2) #Send emails when server updates
 	EMAIL_UPDATE_SCRIPT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_update_script= | cut -d = -f2) #Send notification when the script updates
-	EMAIL_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_ssk= | cut -d = -f2) #Send emails for SSK.txt expiration
 	EMAIL_START=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_start= | cut -d = -f2) #Send emails when the server starts up
 	EMAIL_STOP=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_stop= | cut -d = -f2) #Send emails when the server shuts down
 	EMAIL_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep email_crash= | cut -d = -f2) #Send emails when the server crashes
@@ -50,7 +49,6 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 	#Discord configuration
 	DISCORD_UPDATE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep discord_update= | cut -d = -f2) #Send notification when the server updates
 	DISCORD_UPDATE_SCRIPT=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep discord_update_script= | cut -d = -f2) #Send notification when the script updates
-	DISCORD_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep discord_ssk= | cut -d = -f2) #Send emails for SSK.txt expiration
 	DISCORD_START=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep discord_start= | cut -d = -f2) #Send notifications when the server starts
 	DISCORD_STOP=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep discord_stop= | cut -d = -f2) #Send notifications when the server stops
 	DISCORD_CRASH=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep discord_crash= | cut -d = -f2) #Send notifications when the server crashes
@@ -74,7 +72,6 @@ if [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ] ; then
 	
 	#Timeout configuration (in seconds)
 	TIMEOUT_SAVE=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep timeout_save= | cut -d = -f2) #Get timeout configuration for save timeout.
-	TIMEOUT_SSK=$(cat $SCRIPT_DIR/$SERVICE_NAME-config.conf | grep timeout_ssk= | cut -d = -f2) #Get timeout configuration for ssk monitor.
 else
 	if [[ "-install" != "$1" ]] && [[ "-install_packages" != "$1" ]] && [[ "-help" != "$1" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Configuration) Error: The configuration file is missing. Generating missing configuration strings using default values."
@@ -367,107 +364,6 @@ script_crash_kill() {
 	fi
 }
 
-#Check how old is the SSK.txt file and write to the script log if it's near expiration
-script_ssk_check() {
-	script_logs
-	if [ -f "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt" ] ; then
-		SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
-		if [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old. Consider updating it." | tee -a "$LOG_SCRIPT"
-		elif [[ "$SSK_DAYS" == "30" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old and may have expired. Consider updating it. No further notifications will be displayed until it is updated." | tee -a "$LOG_SCRIPT"
-		fi
-	else
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is mising. Consider generating one or your server will not be visible on the server list." | tee -a "$LOG_SCRIPT"
-	fi
-}
-
-#Check how old is the SSK.txt file and send an email if it's near expiration
-script_ssk_check_email() {
-	script_logs
-	if [ -f "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt" ] ; then
-		SSK_DAYS=$((($(date +%s)-$(stat -c %Y "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG/SSK.txt"))/(3600*24)))
-		if [[ "$EMAIL_SSK" == "1" ]]; then
-			if [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]]; then
-				mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
-				Your SSK.txt is $SSK_DAYS days old. Please consider updating it.
-				EOF
-			elif [[ "$SSK_DAYS" == "30" ]]; then
-				mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
-				Your SSK.txt is $SSK_DAYS days old and may have already expired. Please consider updating it.
-				No further email notifications for the SSK.txt will be sent until it is updated.
-				EOF
-			fi
-		fi
-		if [[ "$DISCORD_SSK" == "1" ]]; then
-			if [[ "$SSK_DAYS" == "28" ]] || [[ "$SSK_DAYS" == "29" ]]; then
-				while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-					curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old. Consider updating it.\"}" "$DISCORD_WEBHOOK"
-				done < $SCRIPT_DIR/discord_webhooks.txt
-			elif [[ "$SSK_DAYS" == "30" ]]; then
-				while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-					curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is $SSK_DAYS old and may have expired. Consider updating it. No further notifications will be displayed until it is updated.\"}" "$DISCORD_WEBHOOK"
-				done < $SCRIPT_DIR/discord_webhooks.txt
-			fi
-		fi
-	else
-		if [[ "$EMAIL_SSK" == "1" ]]; then
-			mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<- EOF
-			SSK.txt is mising. Consider generating one or your server will not be visible on the server list.
-			EOF
-		fi
-		if [[ "$DISCORD_SSK" == "1" ]]; then
-			while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-				curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK Check) SSK.txt is mising. Consider generating one or your server will not be visible on the server list.\"}" "$DISCORD_WEBHOOK"
-			done < $SCRIPT_DIR/discord_webhooks.txt
-		fi
-	fi
-}
-
-#Install/reinstall ssk
-script_install_ssk() {
-	script_logs
-	if [ "$EUID" -ne "0" ]; then #Check if script executed as root
-		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install/replace SSK) Installation of SSK commencing. Waiting on user configuration." | tee -a "$LOG_SCRIPT"
-		read -p "Are you sure you want to install/reinstall the SSK? (y/n): " INSTALL_SSK
-		if [[ "$INSTALL_SSK" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-			INSTALL_SSK_STATE="1"
-		elif [[ "$INSTALL_SSK" =~ ^([nN][oO]|[nN])$ ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install/replace SSK) Installation of SSK aborted." | tee -a "$LOG_SCRIPT"
-			INSTALL_SSK_STATE="0"
-		fi
-	else
-		INSTALL_SSK="1"
-	fi
-
-	if [[ "$INSTALL_SSK_STATE" == "1" ]]; then
-		if [ -f "/home/$USER/SSK.txt" ]; then
-			SSK_PRESENT=1
-			if [[ "$TMPFS_ENABLE" == "1" ]]; then
-				rm $TMPFS_DIR/drive_c/users/$USER/Application\ Data/InterstellarRift/SSK.txt
-				cp /home/$USER/SSK.txt $TMPFS_DIR/drive_c/users/$USER/Application\ Data/InterstellarRift/
-			fi
-			rm $SRV_DIR/drive_c/users/$USER/Application\ Data/InterstellarRift/SSK.txt
-			cp /home/$USER/SSK.txt $SRV_DIR/drive_c/users/$USER/Application\ Data/InterstellarRift/
-			rm /home/$USER/SSK.txt
-			rm $SCRIPT_DIR/ssk_disable_notifications.txt
-		else
-			SSK_PRESENT=0
-		fi
-	fi
-	
-	if [ "$EUID" -ne "0" ]; then
-		if [[ "$INSTALL_SSK_STATE" == "1" ]]; then
-			if [[ "$SSK_PRESENT" == "1" ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install/reinstall SSK) Installation of SSK complete." | tee -a "$LOG_SCRIPT"
-			elif [[ "$SSK_PRESENT" == "0" ]]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install/reinstall SSK) Installation of SSK failed." | tee -a "$LOG_SCRIPT"
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Install/reinstall SSK) Your new SSK needs to be in the /home/$USER/ folder." | tee -a "$LOG_SCRIPT"
-			fi
-		fi
-	fi
-}
-
 #Systemd service sends notification if notifications for start enabled
 script_send_notification_start_initialized() {
 	script_logs
@@ -628,41 +524,6 @@ script_sync() {
 	elif [[ "$TMPFS_ENABLE" == "0" ]]; then
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Sync) Server does not have tmpfs enabled." | tee -a "$LOG_SCRIPT"
 	fi
-}
-
-#Listen on servers for invalid ssk notifications
-script_ssk_monitor() {
-	script_logs
-	IFS=","
-	for SERVER_SERVICE in $(systemctl --user list-units -all --no-legend --no-pager $SERVICE@*.service | awk '{print $1}' | tr "\\n" "," | sed 's/,$//'); do
-		export SERVER_NUMBER=$(echo $SERVER_SERVICE | awk -F '@' '{print $2}' | awk -F '.service' '{print $1}')
-		if [[ "$(systemctl --user show -p ActiveState --value $SERVER_SERVICE)" == "active" ]]; then
-			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening for SSK notifications on server $SERVER_NUMBER has been initiated." | tee -a "$LOG_SCRIPT"
-			timeout $TIMEOUT_SSK /bin/bash -c '
-			while read line; do
-				if [[ "$line" != *"[ServerCommand]"* ]] && [[ "$line" == *"Announcing server to master server: Invalid steam ticket"* ]] && [[ "$line" != *"[All]"* ]]; then
-					if [[ "$EMAIL_SSK" == "1" ]] && [ ! -d "$SCRIPT_DIR/ssk_disable_notifications.txt" ]; then
-						mail -r "$EMAIL_SENDER ($NAME $USER)" -s "Notification: SSK" $EMAIL_RECIPIENT <<< "Server SSK expired. Please generate a new SSK"
-					fi
-					if [[ "$DISCORD_SSK" == "1" ]] && [ ! -d "$SCRIPT_DIR/ssk_disable_notifications.txt" ]; then
-					while IFS="" read -r DISCORD_WEBHOOK || [ -n "$DISCORD_WEBHOOK" ]; do
-						curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"Server SSK expired. Please generate a new SSK.\"}" "$DISCORD_WEBHOOK"
-					done < $SCRIPT_DIR/discord_webhooks.txt
-					fi
-					if [ ! -d "$SCRIPT_DIR/ssk_disable_notifications.txt" ]; then
-						echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Server SSK expired. Please generate a new SSK"
-						touch $SCRIPT_DIR/ssk_disable_notifications.txt
-					fi
-					break
-				else
-					echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening for SSK notifications on server $SERVER_NUMBER complete. Server nominal." | tee -a "$LOG_SCRIPT"
-				fi
-			done < <(tail -n1 -f /tmp/$USER-$SERVICE_NAME-$SERVER_NUMBER-tmux.log)'
-			if [ $? -eq 124 ]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (SSK monitor) Listening time limit for server $SERVER_NUMBER exceeded."
-			fi
-		fi
-	done
 }
 
 #Start the server
@@ -969,20 +830,20 @@ script_delete_save() {
 		echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) WARNING! This will delete the server's save game." | tee -a "$LOG_SCRIPT"
 		read -p "Are you sure you want to delete the server's save game? (y/n): " DELETE_SERVER_SAVE
 		if [[ "$DELETE_SERVER_SAVE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-			read -p "Do you also want to delete the server.json and SSK.txt? (y/n): " DELETE_SERVER_SSKJSON
-			if [[ "$DELETE_SERVER_SSKJSON" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+			read -p "Do you also want to delete the server.json? (y/n): " DELETE_SERVER_JSON
+			if [[ "$DELETE_SERVER_JSON" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				if [[ "$TMPFS_ENABLE" == "1" ]]; then
 					rm -rf $TMPFS_DIR
 				fi
 				rm -rf "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG"/*
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Deletion of save files, server.json and SSK.txt complete." | tee -a "$LOG_SCRIPT"
-			elif [[ "$DELETE_SERVER_SSKJSON" =~ ^([nN][oO]|[nN])$ ]]; then
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Deletion of save files and server.json complete." | tee -a "$LOG_SCRIPT"
+			elif [[ "$DELETE_SERVER_JSON" =~ ^([nN][oO]|[nN])$ ]]; then
 				if [[ "$TMPFS_ENABLE" == "1" ]]; then
 					rm -rf $TMPFS_DIR
 				fi
 				cd "$SRV_DIR/$WINE_PREFIX_GAME_CONFIG"
-				rm -rf $(ls | grep -v server.json | grep -v SSK.txt)
-				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Deletion of save files complete. SSK and server.json are untouched." | tee -a "$LOG_SCRIPT"
+				rm -rf $(ls | grep -v server.json)
+				echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Deletion of save files complete. Server.json is untouched." | tee -a "$LOG_SCRIPT"
 			fi
 		elif [[ "$DELETE_SERVER_SAVE" =~ ^([nN][oO]|[nN])$ ]]; then
 			echo "$(date +"%Y-%m-%d %H:%M:%S") [$VERSION] [$NAME] [INFO] (Delete save) Save deletion canceled." | tee -a "$LOG_SCRIPT"
@@ -1386,8 +1247,6 @@ script_install_commands() {
 		echo 'VERSION=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 VERSION | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-commands.bash
 		echo 'SCRIPT_DIR=$(cat '"$SCRIPT_DIR/$SCRIPT_NAME"' | grep -m 1 SCRIPT_DIR | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-commands.bash
 		echo 'COMMANDS_SCRIPT=$(cat '"$SCRIPT_DIR/$SERVICE_NAME-config.conf"' | grep -m 1 script_commands | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-commands.bash
-		echo 'EMAIL_SSK=$(cat '"$SCRIPT_DIR/$SERVICE_NAME-config.conf"' | grep -m 1 email_ssk | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-commands.bash
-		echo 'DISCORD_SSK=$(cat '"$SCRIPT_DIR/$SERVICE_NAME-config.conf"' | grep -m 1 discord_ssk | cut -d \" -f2)' >> $SCRIPT_DIR/$SERVICE_NAME-commands.bash
 		
 cat >> $SCRIPT_DIR/$SERVICE_NAME-commands.bash << 'EOF'
 
@@ -1795,27 +1654,6 @@ script_install_services() {
 		Type=oneshot
 		ExecStart=$SCRIPT_DIR/$SCRIPT_NAME -timer_two
 		EOF
-			
-		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer <<- EOF
-		[Unit]
-		Description=$NAME Script Timer 3
-		
-		[Timer]
-		OnCalendar=*-*-* 06:55:00
-		Persistent=true
-		
-		[Install]
-		WantedBy=timers.target
-		EOF
-		
-		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service <<- EOF
-		[Unit]
-		Description=$NAME Script Timer 3 Service
-		
-		[Service]
-		Type=oneshot
-		ExecStart=$SCRIPT_DIR/$SERVICE_NAME-script.bash -ssk_check_email
-		EOF
 		
 		cat > /home/$USER/.config/systemd/user/$SERVICE_NAME-send-notification@.service <<- EOF
 		[Unit]
@@ -1833,10 +1671,10 @@ script_install_services() {
 		[Service]
 		Type=forking
 		WorkingDirectory=/home/$USER
-		ExecStartPre=$SCRIPT_DIR/$SCRIPT_NAME -server_tmux_commands_install %i
+		ExecStartPre=$SCRIPT_DIR/$SCRIPT_NAME -commands_tmux_install %i
 		ExecStartPre=/usr/bin/touch /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.log
 		ExecStart=/usr/bin/tmux -f /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.conf -L %u-%i-commands-tmux.sock new-session -d -s $NAME-%i-Commands $SCRIPT_DIR/$SERVICE_NAME-commands.bash %i
-		ExecStop=/usr/bin/tmux -L %u-%i-commands-tmux.sock kill-session -t $NAME
+		ExecStop=/usr/bin/tmux -L %u-%i-commands-tmux.sock kill-session -t $NAME-%i-Commands
 		ExecStop=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.conf
 		ExecStop=/usr/bin/rm /tmp/$USER-$SERVICE_NAME-commands-%i-tmux.log
 		TimeoutStartSec=90
@@ -1975,8 +1813,6 @@ script_timer_one() {
 	
 	if [ $RUNNING_SERVERS -gt "0" ]; then
 		script_remove_old_files
-		script_ssk_check
-		script_ssk_monitor
 		script_crash_kill
 		script_save
 		script_sync
@@ -2010,8 +1846,6 @@ script_timer_two() {
 	
 	if [ $RUNNING_SERVERS -gt "0" ]; then
 		script_remove_old_files
-		script_ssk_check
-		script_ssk_monitor
 		script_crash_kill
 		script_save
 		script_sync
@@ -2344,13 +2178,10 @@ script_install() {
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-1.service - Executes scheduled script functions: save, sync, backup and update."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-2.service"
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-2.service - Executes scheduled script functions: save, sync and update."
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.timer - Timer for scheduled command execution of $SERVICE_NAME-timer-3.service"
-	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-timer-3.service - Executes scheduled SSK checks and sends email if configured as so."
 	echo "/home/$USER/.config/systemd/user/$SERVICE_NAME-send-notification.service - If email notifications enabled, send email if server crashed 3 times in 5 minutes."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-script.bash - This script."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-config.conf - Stores settings for the script."
 	echo "$SCRIPT_DIR/$SERVICE_NAME-server-list.txt - Keeps track of enabled servers."
-	echo "$SCRIPT_DIR/tmux_config/$SERVICE_NAME-01-tmux.conf - Tmux configuration to enable logging."
 	echo "$UPDATE_DIR/installed.buildid - Information on installed buildid (AppInfo from Steamcmd)"
 	echo "$UPDATE_DIR/available.buildid - Information on available buildid (AppInfo from Steamcmd)"
 	echo "$UPDATE_DIR/installed.timeupdated - Information on time the server was last updated (AppInfo from Steamcmd)"
@@ -2468,13 +2299,6 @@ script_install() {
 				POSTFIX_UPDATE_SCRIPT="0"
 			fi
 		echo ""
-		read -p "Email notifications for SSK.txt expiration? (y/n): " POSTFIX_SSK_ENABLE
-			if [[ "$POSTFIX_SSK_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-				POSTFIX_SSK="1"
-			else
-				POSTFIX_SSK="0"
-			fi
-		echo ""
 		read -p "Email notifications for server startup? (WARNING: this can be anoying) (y/n): " POSTFIX_CRASH_ENABLE
 			if [[ "$POSTFIX_CRASH_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				POSTFIX_START="1"
@@ -2524,7 +2348,6 @@ script_install() {
 		POSTFIX_RECIPIENT="none"
 		POSTFIX_UPDATE="0"
 		POSTFIX_UPDATE_SCRIPT="0"
-		POSTFIX_SSK="0"
 		POSTFIX_START="0"
 		POSTFIX_STOP="0"
 		POSTFIX_CRASH="0"
@@ -2556,13 +2379,6 @@ script_install() {
 				DISCORD_UPDATE_SCRIPT="0"
 			fi
 		echo ""
-		read -p "Discord notifications for SSK.txt expiration? (y/n): " DISCORD_SSK_ENABLE
-			if [[ "$DISCORD_SSK_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-				DISCORD_SSK="1"
-			else
-				DISCORD_SSK="0"
-			fi
-		echo ""
 		read -p "Discord notifications for server startup? (y/n): " DISCORD_START_ENABLE
 			if [[ "$DISCORD_START_ENABLE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 				DISCORD_START="1"
@@ -2586,7 +2402,6 @@ script_install() {
 	elif [[ "$DISCORD_ENABLE" =~ ^([nN][oO]|[nN])$ ]]; then
 		DISCORD_UPDATE="0"
 		DISCORD_UPDATE_SCRIPT="0"
-		DISCORD_SSK="0"
 		DISCORD_START="0"
 		DISCORD_STOP="0"
 		DISCORD_CRASH="0"
@@ -2613,7 +2428,6 @@ script_install() {
 	
 	echo "Creating folder structure for server..."
 	mkdir -p /home/$USER/{backups,logs,scripts,server,updates}
-	mkdir -p /home/$USER/scripts/tmux_config
 	cp "$(readlink -f $0)" $SCRIPT_DIR
 	chmod +x $SCRIPT_DIR/$SCRIPT_NAME
 	touch $SCRIPT_DIR/$SERVICE_NAME-server-list.txt
@@ -2646,7 +2460,7 @@ script_install() {
 	fi
 	
 	if [[ "$COMMANDS_SCRIPT" == "1" ]]; then
-		su - $USER -c "systemctl --user enable $SERVICE_NAME-commands@1.service"
+		su - $USER -c "systemctl --user enable $SERVICE_NAME-commands@01.service"
 	fi
 	
 	echo "Writing config file"
@@ -2666,13 +2480,11 @@ script_install() {
 	echo 'email_recipient='"$POSTFIX_RECIPIENT" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_update='"$POSTFIX_UPDATE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_update_script='"$POSTFIX_UPDATE_SCRIPT" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
-	echo 'email_ssk='"$POSTFIX_SSK" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_start='"$POSTFIX_START" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_stop='"$POSTFIX_STOP" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'email_crash='"$POSTFIX_CRASH" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'discord_update='"$DISCORD_UPDATE" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'discord_update_script='"$DISCORD_UPDATE_SCRIPT" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
-	echo 'discord_ssk='"$DISCORD_SSK" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'discord_start='"$DISCORD_START" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'discord_stop='"$DISCORD_STOP" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'discord_crash='"$DISCORD_CRASH" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
@@ -2683,7 +2495,6 @@ script_install() {
 	echo 'log_game_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'dump_game_delold=7' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	echo 'timeout_save=120' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
-	echo 'timeout_ssk=30' >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 	
 	echo "$DISCORD_WEBHOOK" > $SCRIPT_DIR/discord_webhooks.txt
 	
@@ -2739,8 +2550,7 @@ script_install() {
 	
 	echo "Installation complete"
 	echo ""
-	echo "Copy your SSK.txt to $BCKP_SRC_DIR"
-	echo "After you copied your SSK.txt reboot the server and the game server will start on boot."
+	echo "You can now reboot the server and the game server will start on boot."
 	echo "You can login to your $USER account with <sudo -i -u $USER> from your primary account or root account."
 	echo "The script was automaticly copied to the scripts folder located at $SCRIPT_DIR"
 	echo "For any settings you'll want to change, edit the $SCRIPT_DIR/$SERVICE_NAME-config.conf file."
@@ -2748,7 +2558,7 @@ script_install() {
 }
 
 #Do not allow for another instance of this script to run to prevent data loss
-if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]] && [[ "-move_wine_log" != "$1" ]] && [[ "-server_tmux_install" != "$1" ]] && [[ "-server_tmux_commands_install" != "$1" ]] && [[ "-attach" != "$1" ]] && [[ "-attach_commands" != "$1" ]] && [[ "-status" != "$1" ]]; then
+if [[ "-send_notification_start_initialized" != "$1" ]] && [[ "-send_notification_start_complete" != "$1" ]] && [[ "-send_notification_stop_initialized" != "$1" ]] && [[ "-send_notification_stop_complete" != "$1" ]] && [[ "-send_notification_crash" != "$1" ]] && [[ "-move_wine_log" != "$1" ]] && [[ "-server_tmux_install" != "$1" ]] && [[ "-commands_tmux_install" != "$1" ]] && [[ "-attach" != "$1" ]] && [[ "-attach_commands" != "$1" ]] && [[ "-status" != "$1" ]]; then
 	SCRIPT_PID_CHECK=$(basename -- "$0")
 	if pidof -x "$SCRIPT_PID_CHECK" -o $$ > /dev/null; then
 		echo "An another instance of this script is already running, please clear all the sessions of this script before starting a new session"
@@ -2758,7 +2568,7 @@ fi
 
 if [ "$EUID" -ne "0" ] && [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ]; then #Check if script executed as root, if not generate missing config fields
 	touch $SCRIPT_DIR/$SERVICE_NAME-config.conf
-	CONFIG_FIELDS="username,password,tmpfs_enable,beta_branch_enabled,beta_branch_name,email_sender,email_recipient,email_update,email_update_script,email_ssk,email_start,email_stop,email_crash,discord_update,discord_update_script,discord_ssk,discord_start,discord_stop,discord_crash,script_updates,script_commands,bckp_delold,log_delold,log_game_delold,dump_game_delold,timeout_save,timeout_ssk,update_ignore_failed_startups"
+	CONFIG_FIELDS="username,password,tmpfs_enable,beta_branch_enabled,beta_branch_name,email_sender,email_recipient,email_update,email_update_script,email_start,email_stop,email_crash,discord_update,discord_update_script,discord_start,discord_stop,discord_crash,script_updates,script_commands,bckp_delold,log_delold,log_game_delold,dump_game_delold,timeout_save,update_ignore_failed_startups"
 	IFS=","
 	for CONFIG_FIELD in $CONFIG_FIELDS; do
 		if ! grep -q $CONFIG_FIELD $SCRIPT_DIR/$SERVICE_NAME-config.conf; then
@@ -2772,8 +2582,6 @@ if [ "$EUID" -ne "0" ] && [ -f "$SCRIPT_DIR/$SERVICE_NAME-config.conf" ]; then #
 				echo "$CONFIG_FIELD=14" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 			elif [[ "$CONFIG_FIELD" == "timeout_save" ]]; then
 				echo "$CONFIG_FIELD=120" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
-			elif [[ "$CONFIG_FIELD" == "timeout_ssk" ]]; then
-				echo "$CONFIG_FIELD=30" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 			else
 				echo "$CONFIG_FIELD=0" >> $SCRIPT_DIR/$SERVICE_NAME-config.conf
 			fi
@@ -2803,11 +2611,8 @@ case "$1" in
 		echo -e "${GREEN}-backup ${RED}- ${GREEN}Backup files, if server running or not${NC}"
 		echo -e "${GREEN}-autobackup ${RED}- ${GREEN}Automaticly backup files when server running${NC}"
 		echo -e "${GREEN}-deloldbackup ${RED}- ${GREEN}Delete old backups${NC}"
-		echo -e "${GREEN}-delete_save ${RED}- ${GREEN}Delete the server's save game with the option for deleting/keeping the server.json and SSK.txt files${NC}"
+		echo -e "${GREEN}-delete_save ${RED}- ${GREEN}Delete the server's save game with the option for deleting/keeping the server.json${NC}"
 		echo -e "${GREEN}-change_branch ${RED}- ${GREEN}Changes the game branch in use by the server (public,experimental,legacy and so on)${NC}"
-		echo -e "${GREEN}-ssk_check ${RED}- ${GREEN}Checks the SSK's creation/modification date and displays a warning if nearing expiration${NC}"
-		echo -e "${GREEN}-ssk_monitor ${RED}- ${GREEN}Monitors SSK notifications in server consoles for a given time specified in the script config${NC}"
-		echo -e "${GREEN}-ssk_install ${RED}- ${GREEN}Installs new SSK.txt file. Your new SSK.txt needs to be in /home/$USER folder before using this${NC}"
 		echo -e "${GREEN}-install_aliases ${RED}- ${GREEN}Installs .bashrc aliases for easy access to the server tmux session${NC}"
 		echo -e "${GREEN}-rebuild_commands ${RED}- ${GREEN}Reinstalls the commands wrapper script if any updates occoured${NC}"
 		echo -e "${GREEN}-rebuild_services ${RED}- ${GREEN}Reinstalls the systemd services from the script. Usefull if any service updates occoured${NC}"
@@ -2827,9 +2632,6 @@ case "$1" in
 		echo ""
 		echo -e "${LIGHTRED}If this is your first time running the script:${NC}"
 		echo -e "${LIGHTRED}Use the -install argument (run only this command as root) and follow the instructions${NC}"
-		echo -e "${LIGHTRED}The location you will have to paste your SSK.txt in will be displayed at the end of the installation.${NC}"
-		echo ""
-		echo -e "${LIGHTRED}After that paste in your SSK.txt then reboot the server, the game should start on it's own on boot."
 		echo ""
 		echo -e "${LIGHTRED}Example usage: ./$SCRIPT_NAME -start${NC}"
 		echo ""
@@ -2905,15 +2707,6 @@ case "$1" in
 	-change_branch)
 		script_change_branch
 		;;
-	-ssk_check)
-		script_ssk_check
-		;;
-	-ssk_monitor)
-		script_ssk_monitor
-		;;
-	-ssk_check_email)
-		script_ssk_check_email
-		;;
 	-send_notification_start_initialized)
 		script_send_notification_start_initialized $2
 		;;
@@ -2932,9 +2725,6 @@ case "$1" in
 	-move_wine_log)
 		script_move_wine_log $2
 		;;
-	-ssk_install)
-		script_install_ssk
-		;;
 	-crash_kill)
 		script_crash_kill
 		;;
@@ -2944,7 +2734,7 @@ case "$1" in
 	-server_tmux_install)
 		script_server_tmux_install $2
 		;;
-	-server_tmux_commands_install)
+	-commands_tmux_install)
 		script_commands_tmux_install $2
 		;;
 	-rebuild_commands)
@@ -2977,7 +2767,7 @@ case "$1" in
 	echo ""
 	echo "For more detailed information, execute the script with the -help argument"
 	echo ""
-	echo "Usage: $0 {diag|add_server|remove_server|start|start_no_err|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|ssk_check|ssk_install|install_aliases|rebuild_commands|rebuild_services|rebuild_prefix|disable_services|enable_services|reload_services|update|verify|update_script|update_script_force|attach|attach_commands|status|install|install_packages}"
+	echo "Usage: $0 {diag|add_server|remove_server|start|start_no_err|stop|restart|save|sync|backup|autobackup|deloldbackup|delete_save|change_branch|install_aliases|rebuild_commands|rebuild_services|rebuild_prefix|disable_services|enable_services|reload_services|update|verify|update_script|update_script_force|attach|attach_commands|status|install|install_packages}"
 	exit 1
 	;;
 esac
